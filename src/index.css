@@ -1,0 +1,26 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=Inter:wght@300;400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "DM Sans", sans-serif;
+  --font-sans: "Inter", sans-serif;
+  
+  /* Sophisticated Soft Dark Theme */
+  --color-bg: #0a0f0d; /* Deep Forest Black */
+  --color-sage: #a3e635; /* Soft Lime */
+  --color-sage-light: #16201b; 
+  --color-ink: #f1f5f9; /* Slate 100 for better contrast */
+  --color-clay: #fbbf24; /* Amber 400 */
+}
+
+@layer base {
+  body {
+    @apply bg-bg text-ink font-sans antialiased overflow-x-hidden;
+    background-image: 
+      radial-gradient(circle at 10% 20%, rgba(163, 230, 53, 0.03) 0%, transparent 40%),
+      radial-gradient(circle at 90% 80%, rgba(251, 191, 36, 0.03) 0%, transparent 40%);
+  }
+  h1, h2, h3, h4, .font-serif {
+    @apply font-serif;
+  }
+}

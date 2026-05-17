@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Primitive Definition
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // User Validation
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'points', 'streak', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             data.points is int && data.points >= 0 &&
+             data.streak is int && data.streak >= 0 &&
+             (data.get('displayName', '') is string) &&
+             (data.get('photoURL', '') is string) &&
+             (data.get('badges', []) is list) &&
+             data.createdAt == request.time;
+    }
+
+    // CheckIn Validation
+    function isValidCheckIn(data) {
+      return data.keys().hasAll(['timestamp', 'reflection', 'type']) &&
+             data.timestamp == request.time &&
+             data.reflection is string && data.reflection.size() <= 2000 &&
+             data.type in ['face', 'text', 'voice'];
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidId(userId) && (
+        // Action: Update Profile or Session/Stats
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'points', 'streak', 'lastCheckIn', 'badges', 'sessionStartedAt', 'sessionCooldownUntil'])
+      );
+      
+      match /checkins/{checkinId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(checkinId);
+        allow create: if isOwner(userId) && isValidId(checkinId) && isValidCheckIn(incoming()) && 
+                      // Verify top-level user doc upgrade (atomicity is usually via batch in some apps, 
+                      // but here we just ensure the user exists)
+                      existsAfter(/databases/$(database)/documents/users/$(userId));
+        allow delete: if isOwner(userId) && isValidId(checkinId);
+      }
+    }
+  }
+}

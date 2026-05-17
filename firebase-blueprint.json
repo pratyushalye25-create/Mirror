@@ -1,0 +1,44 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile with gamification stats",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "points": { "type": "integer" },
+        "streak": { "type": "integer" },
+        "lastCheckIn": { "type": "string", "format": "date-time" },
+        "sessionStartedAt": { "type": "string", "format": "date-time" },
+        "sessionCooldownUntil": { "type": "string", "format": "date-time" },
+        "badges": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "points", "streak"]
+    },
+    "CheckIn": {
+      "title": "Daily Check-in",
+      "description": "Record of a daily emotional check-in",
+      "type": "object",
+      "properties": {
+        "timestamp": { "type": "string", "format": "date-time" },
+        "reflection": { "type": "string" },
+        "type": { "type": "string", "enum": ["face", "text", "voice"] }
+      },
+      "required": ["timestamp", "reflection", "type"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "users/{userId}/checkins/{checkinId}": {
+      "schema": "CheckIn",
+      "description": "Daily check-ins for gamification"
+    }
+  }
+}

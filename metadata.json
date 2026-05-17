@@ -1,0 +1,8 @@
+{
+  "name": "MindMirror - Pratyusha's Edition",
+  "description": "Premium AI-powered mental wellness companion by Pratyusha, understanding emotions through advanced face, text, and voice analysis.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
