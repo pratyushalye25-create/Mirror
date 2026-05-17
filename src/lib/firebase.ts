@@ -9,7 +9,17 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
 const googleProvider = new GoogleAuthProvider();
 
-export const signInWithGoogle = () => signInWithPopup(auth, googleProvider);
+export const signInWithGoogle = async () => {
+  try {
+    return await signInWithPopup(auth, googleProvider);
+  } catch (error: any) {
+    console.error("Firebase Auth Error:", error);
+    if (error.code === 'auth/unauthorized-domain') {
+      console.error("CRITICAL: The current domain is not authorized in the Firebase Console. Go to Authentication > Settings > Authorized Domains and add your deployment URL.");
+    }
+    throw error;
+  }
+};
 export const logOut = () => signOut(auth);
 
 export enum OperationType {

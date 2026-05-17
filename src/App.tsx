@@ -1,6 +1,7 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
+ * Version: 1.0.2 - Auth Optimization & Sync Trigger
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -2147,6 +2148,11 @@ export default function App() {
           <button onClick={() => setShowNotification(null)} className="ml-8 font-black uppercase text-[10px] tracking-widest opacity-40 hover:opacity-100">Close</button>
         </motion.div>
       )}
+
+      {/* Version Footer */}
+      <div className="fixed bottom-4 right-4 z-50 pointer-events-none opacity-20">
+        <span className="text-[8px] font-black uppercase tracking-widest text-white">v1.0.2</span>
+      </div>
     </div>
   );
 }
