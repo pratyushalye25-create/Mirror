@@ -38,7 +38,7 @@ service cloud.firestore {
       allow create: if isOwner(userId) && isValidId(userId) && isValidUser(incoming());
       allow update: if isOwner(userId) && isValidId(userId) && (
         // Action: Update Profile or Session/Stats
-        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'points', 'streak', 'lastCheckIn', 'badges', 'sessionStartedAt', 'sessionCooldownUntil'])
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'points', 'streak', 'lastCheckIn', 'badges', 'sessionStartedAt', 'sessionCooldownUntil', 'gameProgress'])
       );
       
       match /checkins/{checkinId} {

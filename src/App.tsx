@@ -1,7 +1,7 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
- * Version: 1.0.2 - Auth Optimization & Sync Trigger
+ * Version: 1.0.3 - README added & Core Sync Fix
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -69,6 +69,7 @@ interface UserData {
   displayName?: string;
   photoURL?: string;
   gameProgress?: Record<string, number>;
+  createdAt?: any;
 }
 
 interface CheckInRecord {
@@ -82,6 +83,7 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [showNotification, setShowNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [sessionTimeLeft, setSessionTimeLeft] = useState<string | null>(null);
   const [onCooldown, setOnCooldown] = useState(false);
@@ -1017,6 +1019,30 @@ export default function App() {
     setActiveExercise(exercise);
   };
 
+  const handleLogin = async () => {
+    setIsLoggingIn(true);
+    try {
+      await signInWithGoogle();
+    } catch (error: any) {
+      console.error("Login caught in handleLogin:", error);
+      let errorMsg = lang === 'bn' ? "লগইন করতে সমস্যা হয়েছে।" : "Login failed. Please try again.";
+      
+      if (error.code === 'auth/unauthorized-domain') {
+        errorMsg = lang === 'bn' 
+          ? "এই ডোমেইনটি অথোরাইজড নয়। দয়া করে ফায়ারবেস কনসোলে ডোমেইনটি এড করুন।" 
+          : "Domain not authorized. Please add this URL to Authorized Domains in Firebase Console.";
+      } else if (error.code === 'auth/popup-blocked') {
+        errorMsg = lang === 'bn' 
+          ? "পপ-আপ ব্লক করা হয়েছে। দয়া করে এলাও করুন।" 
+          : "Popup blocked by browser. Please allow popups for this site.";
+      }
+      
+      setShowNotification({ message: errorMsg, type: 'error' });
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
   const triggerScan = (type: 'face' | 'text' | 'voice') => {
     if (!userData?.sessionStartedAt) {
       setShowNotification({ message: currentT.sessionWarning, type: 'error' });
@@ -1075,10 +1101,12 @@ export default function App() {
             badges: [],
             displayName: user.displayName || '',
             photoURL: user.photoURL || '',
-            gameProgress: { memory: 0, focus: 0 }
+            gameProgress: { memory: 0, focus: 0 },
+            createdAt: serverTimestamp()
           };
           await setDoc(doc(db, 'users', user.uid), initialData);
-          setUserData(initialData);
+          // Set local state with a JS date for immediate UI use
+          setUserData({ ...initialData, createdAt: new Date() });
         }
         fetchHistory(user.uid);
       }
@@ -1134,9 +1162,19 @@ export default function App() {
                      </div>
                   </div>
                 ) : (
-                  <button onClick={signInWithGoogle} className="relative group overflow-hidden bg-white text-black px-3 sm:px-4 py-1.5 rounded-lg sm:rounded-xl font-black text-[8px] sm:text-[9px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_10px_20px_rgba(255,255,255,0.08)] flex items-center gap-1.5 sm:gap-2 border border-white/20">
-                    <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-sage relative z-10" />
-                    <span className="relative z-10">{currentT.loginWithGoogle}</span>
+                  <button 
+                    onClick={handleLogin} 
+                    disabled={isLoggingIn}
+                    className="relative group overflow-hidden bg-white text-black px-4 sm:px-6 py-2 rounded-lg sm:rounded-xl font-black text-[9px] sm:text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_10px_20px_rgba(255,255,255,0.08)] flex items-center gap-2 border border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoggingIn ? (
+                      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
+                        <Zap className="w-4 h-4 text-sage" />
+                      </motion.div>
+                    ) : (
+                      <Sparkles className="w-4 h-4 text-sage relative z-10" />
+                    )}
+                    <span className="relative z-10">{isLoggingIn ? (lang === 'bn' ? 'লগইন হচ্ছে...' : 'LOGGING IN...') : currentT.loginWithGoogle}</span>
                   </button>
                 )}
               </div>
@@ -1194,35 +1232,40 @@ export default function App() {
                   </button>
                 </div>
 
-                {user ? (
-                  <div className="space-y-6">
-                    <div className="bg-white/5 p-6 rounded-3xl border border-white/10 flex items-center justify-between">
-                      <div className="space-y-1">
-                        <div className="text-[10px] font-black text-sage uppercase tracking-widest leading-none mb-1">{userData?.points || 0} PTS</div>
-                        <div className="text-lg font-serif font-black text-white">{user.displayName}</div>
+                  {user ? (
+                    <div className="space-y-6">
+                      <div className="bg-white/5 p-6 rounded-3xl border border-white/10 flex items-center justify-between">
+                        <div className="space-y-1">
+                          <div className="text-[10px] font-black text-sage uppercase tracking-widest leading-none mb-1">{userData?.points || 0} PTS</div>
+                          <div className="text-lg font-serif font-black text-white">{user.displayName}</div>
+                        </div>
                       </div>
+                      <button 
+                        onClick={() => {
+                          logOut();
+                          setIsMenuOpen(false);
+                        }} 
+                        className="w-full flex items-center justify-center gap-3 p-5 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20 font-black text-xs uppercase tracking-widest"
+                      >
+                        <LogOut className="w-5 h-5" /> {lang === 'bn' ? 'লগ-আউট' : 'LOGOUT'}
+                      </button>
                     </div>
+                  ) : (
                     <button 
-                      onClick={() => {
-                        logOut();
-                        setIsMenuOpen(false);
-                      }} 
-                      className="w-full flex items-center justify-center gap-3 p-5 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20 font-black text-xs uppercase tracking-widest"
+                      onClick={handleLogin} 
+                      disabled={isLoggingIn}
+                      className="w-full h-20 rounded-[28px] bg-white text-black font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 disabled:opacity-50"
                     >
-                      <LogOut className="w-5 h-5" /> {lang === 'bn' ? 'লগ-আউট' : 'LOGOUT'}
+                      {isLoggingIn ? (
+                        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
+                          <Zap className="w-5 h-5 text-sage" />
+                        </motion.div>
+                      ) : (
+                        <Sparkles className="w-5 h-5 text-sage" />
+                      )}
+                      <span>{isLoggingIn ? (lang === 'bn' ? 'লগইন হচ্ছে...' : 'LOGGING IN...') : currentT.loginWithGoogle}</span>
                     </button>
-                  </div>
-                ) : (
-                  <button 
-                    onClick={() => {
-                      signInWithGoogle();
-                      setIsMenuOpen(false);
-                    }} 
-                    className="w-full h-16 rounded-[24px] bg-white text-black font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3"
-                  >
-                    <Sparkles className="w-5 h-5 text-sage" /> {currentT.loginWithGoogle}
-                  </button>
-                )}
+                  )}
               </div>
             </motion.div>
           )}
