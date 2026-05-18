@@ -38,7 +38,9 @@ import {
   Trash2,
   Menu,
   X,
-  Activity
+  Activity,
+  Info,
+  CreditCard
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -128,6 +130,8 @@ export default function App() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(true);
   const [activeSound, setActiveSound] = useState<'none' | 'rain' | 'forest' | 'ocean'>('none');
+  const [viewingPlan, setViewingPlan] = useState<any>(null);
+  const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const toggleSound = (sound: 'rain' | 'forest' | 'ocean') => {
@@ -1897,6 +1901,7 @@ export default function App() {
                        outcome: lang === 'bn' ? "দৈনিক মুড ট্র্যাকিং" : "Daily Mood Tracking & Awareness",
                        price: "$0",
                        features: lang === 'bn' ? ["আনলিমিটেড জার্নালিং", "টেক্সট এনালাইসিস", "বেসিক ইতিহাস", "দৈনিক অনুপ্রেরণা"] : ["Unlimited Journaling", "Text Analysis", "Basic History", "Daily Affirmations"],
+                       description: lang === 'bn' ? "আপনার মানসিক স্বাস্থ্যের যাত্রার প্রথম ধাপ। একদম ফ্রি।" : "The first step in your mental health journey. Completely free.",
                        color: "border-white/10 bg-white/[0.02]"
                      },
                      { 
@@ -1905,6 +1910,7 @@ export default function App() {
                        price: "$12",
                        featured: true,
                        features: lang === 'bn' ? ["ফাউন্ডেশনের সবকিছু+", "ভয়েস টোন এনালাইসিস", "ডিপ মিরর (ফেস)", "গাইডেড সাপোর্ট এআই"] : ["Everything in Foundation+", "Voice Tone Analysis", "The Deep Mirror (Face)", "Guided Support AI"],
+                       description: lang === 'bn' ? "গভীর বিশ্লেষণের মাধ্যমে নিজের আবেগকে নিয়ন্ত্রণ করার জন্য ডিজাইন করা হয়েছে। এতে থাকছে ভয়েস এবং ফেস এনালাইসিস।" : "Designed to control your emotions through deep analysis. Includes voice and face analysis.",
                        color: "border-sage bg-sage/5"
                      },
                      { 
@@ -1912,14 +1918,23 @@ export default function App() {
                        outcome: lang === 'bn' ? "ইমোশনাল ইন্টেলিজেন্স স্যুট" : "Emotional Intelligence & Focus Suite",
                        price: "$24",
                        features: lang === 'bn' ? ["প্রো এর সবকিছু+", "অ্যাডভান্সড ট্রেন্ড ইনসাইটস", "ব্রেইন ব্যালান্স গেমস", "প্রায়োরিটি কম্প্যানিয়ন এক্সেস"] : ["Everything in Pro+", "Advanced Trend Insights", "Brain Balance Games", "Priority Companion Access"],
+                       description: lang === 'bn' ? "যারা নিজেদের সেরাটা দিতে চান তাদের জন্য। অ্যাডভান্সড ইনসাইটস এবং স্পেশাল গেমস এর মাধ্যমে আপনার পারফরম্যান্স বাড়ান।" : "For those who want to give their best. Boost your performance with advanced insights and special games.",
                        color: "border-purple-500/20 bg-purple-500/5"
                      }
                    ].map((plan, i) => (
-                     <motion.div key={i} whileHover={{ y: -10 }} className={`p-8 sm:p-12 rounded-[48px] sm:rounded-[64px] border ${plan.color} relative overflow-hidden flex flex-col justify-between`}>
+                     <motion.div 
+                       key={i} 
+                       whileHover={{ y: -10 }} 
+                       onClick={() => setViewingPlan(plan)}
+                       className={`p-8 sm:p-12 rounded-[48px] sm:rounded-[64px] border ${plan.color} relative overflow-hidden flex flex-col justify-between cursor-pointer group`}
+                     >
                         {plan.featured && <div className="absolute top-8 sm:top-12 right-8 sm:right-12 bg-sage text-black px-3 sm:px-4 py-1.5 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-widest">{lang === 'bn' ? 'সেরা অফার' : 'BEST VALUE'}</div>}
                         <div className="space-y-6 sm:space-y-10">
                            <div>
-                             <h3 className="text-xl sm:text-2xl font-serif font-black mb-2 sm:mb-4">{plan.title}</h3>
+                             <div className="flex items-center justify-between mb-2 sm:mb-4">
+                               <h3 className="text-xl sm:text-2xl font-serif font-black">{plan.title}</h3>
+                               <Info className="w-5 h-5 text-white/10 group-hover:text-sage transition-colors" />
+                             </div>
                              <p className="text-sage text-xs sm:text-sm font-black uppercase tracking-widest">{plan.outcome}</p>
                            </div>
                            <div className="text-5xl sm:text-6xl font-black">{plan.price}<span className="text-lg sm:text-xl text-white/20 font-medium">/mo</span></div>
@@ -1931,7 +1946,9 @@ export default function App() {
                               ))}
                            </div>
                         </div>
-                        <button className={`w-full h-16 sm:h-20 rounded-2xl sm:rounded-[32px] mt-8 sm:mt-12 font-black uppercase tracking-widest text-[10px] sm:text-xs transition-all ${plan.featured ? 'bg-sage text-black shadow-xl shadow-sage/20' : 'bg-white/5 text-white hover:bg-white/10'}`}>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setCheckoutPlan(plan); }}
+                          className={`w-full h-16 sm:h-20 rounded-2xl sm:rounded-[32px] mt-8 sm:mt-12 font-black uppercase tracking-widest text-[10px] sm:text-xs transition-all ${plan.featured ? 'bg-sage text-black shadow-xl shadow-sage/20' : 'bg-white/5 text-white hover:bg-white/10'}`}>
                            {currentT.getStarted}
                         </button>
                      </motion.div>
@@ -2223,6 +2240,103 @@ export default function App() {
           <button onClick={() => setShowNotification(null)} className="ml-8 font-black uppercase text-[10px] tracking-widest opacity-40 hover:opacity-100">Close</button>
         </motion.div>
       )}
+
+      {/* Plan Details Modal */}
+      <AnimatePresence>
+        {viewingPlan && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[700] bg-black/90 backdrop-blur-3xl flex items-center justify-center p-4 sm:p-6">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-bg border border-white/10 w-full max-w-lg rounded-[48px] overflow-hidden shadow-2xl relative"
+            >
+              <button onClick={() => setViewingPlan(null)} className="absolute top-8 right-8 p-3 hover:bg-white/5 rounded-2xl text-white/20 hover:text-white transition-all"><X className="w-6 h-6" /></button>
+              
+              <div className="p-8 sm:p-12 space-y-8 sm:space-y-12">
+                <div className="space-y-4">
+                  <div className="text-sage font-black text-[10px] uppercase tracking-[0.4em]">{lang === 'bn' ? 'প্ল্যান বিস্তারিত' : 'PLAN DETAILS'}</div>
+                  <h2 className="text-3xl sm:text-4xl font-serif font-black tracking-tighter text-white uppercase">{viewingPlan.title}</h2>
+                </div>
+
+                <div className="p-8 bg-white/5 rounded-[32px] border border-white/5 space-y-4">
+                  <p className="text-lg font-serif italic text-white/80 leading-relaxed">"{viewingPlan.description}"</p>
+                  <p className="text-xs text-white/30 uppercase font-black tracking-widest">{viewingPlan.outcome}</p>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">{lang === 'bn' ? 'ফিচারসমূহ:' : 'WHAT\'S INCLUDED:'}</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {viewingPlan.features.map((f: any, i: number) => (
+                      <div key={i} className="flex items-center gap-3 text-[10px] font-black text-white/60 uppercase tracking-widest">
+                        <div className="w-5 h-5 bg-sage/10 rounded-lg flex items-center justify-center"><CheckCircle className="w-3 h-3 text-sage" /></div>
+                        {f}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => { setCheckoutPlan(viewingPlan); setViewingPlan(null); }}
+                  className="w-full h-20 rounded-[28px] bg-sage text-black font-black uppercase tracking-[0.2em] text-xs hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-sage/20"
+                >
+                  {currentT.getStarted} - {viewingPlan.price}/mo
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Payment Options Modal */}
+      <AnimatePresence>
+        {checkoutPlan && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[800] bg-black/90 backdrop-blur-3xl flex items-center justify-center p-4 sm:p-6">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-bg border border-white/10 w-full max-w-sm rounded-[48px] overflow-hidden shadow-2xl relative"
+            >
+              <button onClick={() => setCheckoutPlan(null)} className="absolute top-8 right-8 p-3 hover:bg-white/5 rounded-2xl text-white/20 hover:text-white transition-all"><X className="w-6 h-6" /></button>
+              
+              <div className="p-8 sm:p-12 text-center space-y-10 sm:space-y-12">
+                <div className="space-y-4">
+                  <div className="text-sage font-black text-[10px] uppercase tracking-[0.4em]">{lang === 'bn' ? 'পেমেন্ট সম্পন্ন করুন' : 'COMPLETE PAYMENT'}</div>
+                  <h2 className="text-2xl sm:text-3xl font-serif font-black tracking-tighter text-white uppercase">{checkoutPlan.title}</h2>
+                  <div className="text-4xl font-black text-white">{checkoutPlan.price}<span className="text-sm text-white/20 font-medium">/mo</span></div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">{lang === 'bn' ? 'পেমেন্ট মেথড বেছে নিন' : 'CHOOSE PAYMENT METHOD'}</div>
+                  
+                  <button className="w-full h-16 sm:h-20 bg-[#E2136E]/10 border border-[#E2136E]/20 rounded-2xl flex items-center px-8 gap-4 hover:bg-[#E2136E]/20 transition-all group">
+                    <div className="w-10 h-10 bg-[#E2136E] rounded-xl flex items-center justify-center font-black text-white">b</div>
+                    <div className="flex-1 text-left font-black text-[#E2136E] uppercase tracking-widest text-[10px]">bKash</div>
+                    <ArrowRight className="w-4 h-4 text-[#E2136E] opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0" />
+                  </button>
+
+                  <button className="w-full h-16 sm:h-20 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center px-8 gap-4 hover:bg-blue-500/20 transition-all group">
+                    <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center"><CreditCard className="w-5 h-5 text-white" /></div>
+                    <div className="flex-1 text-left font-black text-blue-400 uppercase tracking-widest text-[10px]">{lang === 'bn' ? 'কার্ড' : 'CARD'}</div>
+                    <ArrowRight className="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0" />
+                  </button>
+
+                  <button className="w-full h-16 sm:h-20 bg-white/5 border border-white/10 rounded-2xl flex items-center px-8 gap-4 hover:bg-white/10 transition-all group">
+                    <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center font-black text-white">G</div>
+                    <div className="flex-1 text-left font-black text-white/60 uppercase tracking-widest text-[10px]">Google Pay</div>
+                    <ArrowRight className="w-4 h-4 text-white/40 opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0" />
+                  </button>
+                </div>
+
+                <p className="text-[8px] text-white/20 font-black uppercase tracking-widest leading-relaxed">
+                  {lang === 'bn' ? 'আপনার পেমেন্ট সুরক্ষিত এবং এনক্রিপ্টেড।' : 'Your payment is secure and encrypted.'}
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Version Footer */}
       <div className="fixed bottom-4 right-4 z-50 pointer-events-none opacity-20">
