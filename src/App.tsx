@@ -1049,10 +1049,13 @@ export default function App() {
       return;
     }
     setAnalysisType(type);
-    setScanStep(type === 'text' ? 'analyzing' : 'camera');
+    setScanStep(type === 'face' ? 'camera' : 'analyzing');
     setIsScanning(true);
-    if (type !== 'text') {
-      startCamera(type === 'voice');
+    if (type === 'face') {
+      startCamera(false);
+    } else if (type === 'voice') {
+      // For voice, we don't necessarily need camera, but we can start audio context if needed
+      // Actually startRecording handles it
     }
   };
 
@@ -1354,25 +1357,16 @@ export default function App() {
                               <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 text-white/20 group-hover:translate-x-2 transition-transform" />
                             </button>
 
-                            {/* Unlocked Features */}
+                            {/* Unlocked Features - Simplified for User Request */}
                             <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                               {userData.streak >= 3 ? (
-                                 <>
-                                   <button onClick={() => triggerScan('face')} className="bg-white/10 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-white/10 hover:border-sage transition-all text-center group">
-                                     <div className="w-8 h-8 sm:w-10 sm:h-10 bg-sage/20 rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 text-sage group-hover:scale-110 transition-transform"><Camera className="w-4 h-4 sm:w-5 sm:h-5" /></div>
-                                     <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-tight text-white/80">{currentT.faceAnalysis}</div>
-                                   </button>
-                                   <button onClick={() => triggerScan('voice')} className="bg-white/10 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-white/10 hover:border-sage transition-all text-center group">
-                                     <div className="w-8 h-8 sm:w-10 sm:h-10 bg-sage/20 rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 text-sage group-hover:scale-110 transition-transform"><Mic className="w-4 h-4 sm:w-5 sm:h-5" /></div>
-                                     <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-tight text-white/80">{currentT.voiceTone}</div>
-                                   </button>
-                                 </>
-                               ) : (
-                                 <div className="col-span-2 p-5 sm:p-6 bg-white/[0.02] border border-dashed border-white/10 rounded-2xl sm:rounded-3xl text-center">
-                                    <Lock className="w-5 h-5 sm:w-6 sm:h-6 text-white/10 mx-auto mb-2 sm:mb-3" />
-                                    <p className="text-[8px] sm:text-[10px] font-black text-white/20 uppercase tracking-widest">{lang === 'bn' ? `আরও ${3 - userData.streak} দিন জার্নাল করুন 'দ্য ডিপ মিরর' আনলক করতে!` : `Journal for ${3 - userData.streak} more days to unlock 'The Deep Mirror'!`}</p>
-                                 </div>
-                               )}
+                                <button onClick={() => triggerScan('face')} className="bg-white/10 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-white/10 hover:border-sage transition-all text-center group">
+                                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-sage/20 rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 text-sage group-hover:scale-110 transition-transform"><Camera className="w-4 h-4 sm:w-5 sm:h-5" /></div>
+                                  <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-tight text-white/80">{currentT.faceAnalysis}</div>
+                                </button>
+                                <button onClick={() => triggerScan('voice')} className="bg-white/10 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-white/10 hover:border-sage transition-all text-center group">
+                                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-sage/20 rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 text-sage group-hover:scale-110 transition-transform"><Mic className="w-4 h-4 sm:w-5 sm:h-5" /></div>
+                                  <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-tight text-white/80">{currentT.voiceTone}</div>
+                                </button>
                             </div>
                          </div>
                        )}
@@ -2013,6 +2007,24 @@ export default function App() {
       <AnimatePresence>
         {isScanning && (
           <motion.div key="scanning-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-bg/95 backdrop-blur-3xl flex items-center justify-center p-6 text-white overflow-y-auto">
+            
+            {/* Privacy Trust Popup */}
+            <div className="fixed top-8 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 z-[210]">
+               <motion.div 
+                 initial={{ opacity: 0, y: -40, scale: 0.9 }} 
+                 animate={{ opacity: 1, y: 0, scale: 1 }}
+                 transition={{ type: "spring", damping: 20, stiffness: 300, delay: 0.2 }}
+                 className="bg-green-500 text-white p-4 rounded-3xl shadow-[0_20px_50px_rgba(34,197,94,0.3)] flex items-center gap-4 border border-green-400/30"
+               >
+                  <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center shrink-0">
+                     <ShieldCheck className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="text-left space-y-0.5 min-w-0">
+                     <div className="text-[10px] font-black uppercase tracking-widest leading-none">{(currentT as any).privacyBadge}</div>
+                     <div className="text-[8px] opacity-80 font-bold uppercase leading-tight">{(currentT as any).privacyDisclaimer}</div>
+                  </div>
+               </motion.div>
+            </div>
             <div className="max-w-xl w-full text-center py-20">
               {scanStep === 'camera' && (
                 <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="space-y-8 sm:space-y-12">
@@ -2020,16 +2032,7 @@ export default function App() {
                        <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover scale-x-[-1]" />
                        <div className="absolute inset-0 border-8 border-white/5 rounded-[60px] pointer-events-none" />
                        
-                       {/* Zero-Recording Trust Badge */}
-                       <div className="absolute top-6 left-1/2 -translate-x-1/2 w-[85%] z-20">
-                          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="bg-green-500/20 backdrop-blur-md border border-green-500/30 px-6 py-3 rounded-2xl flex items-center gap-3">
-                             <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
-                             <div className="space-y-0.5">
-                                <div className="text-[10px] font-black text-green-500 uppercase tracking-widest">{(currentT as any).privacyBadge}</div>
-                                <div className="text-[8px] text-white/60 font-medium leading-tight uppercase">{(currentT as any).privacyDisclaimer}</div>
-                             </div>
-                          </motion.div>
-                       </div>
+
 
                        <motion.div animate={{ top: isRecording ? ['0%', '100%', '0%'] : '50%' }} transition={isRecording ? { duration: 3, repeat: Infinity, ease: "linear" } : {}} className={`absolute left-0 right-0 h-1 z-10 ${isRecording ? 'bg-red-500 shadow-[0_0_40px_red]' : 'bg-sage shadow-[0_0_40px_rgba(132,204,22,1)]'}`} />
                        {isRecording && <div className="absolute top-8 right-8 bg-red-600 px-5 thick:py-2 rounded-full text-xs font-black uppercase tracking-[0.2em] flex items-center gap-3"><div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse" /> {Math.floor(recordingTime/60)}:{(recordingTime%60).toString().padStart(2,'0')}</div>}
@@ -2046,9 +2049,33 @@ export default function App() {
                         </div>
                       )}
                       <div className="flex flex-col items-center gap-10">
-                         <button onClick={capturePhoto} className={`w-24 h-24 rounded-full border-4 flex items-center justify-center transition-all active:scale-90 ${scanMode === 'video' ? 'border-red-500/20' : 'border-white/10'}`}>
-                            <div className={`w-16 h-16 rounded-full shadow-2xl ${isRecording ? 'bg-red-600 animate-pulse rounded-2xl' : (scanMode === 'video' ? 'bg-red-600/40' : 'bg-sage')}`} />
-                         </button>
+                         <div className="flex items-center gap-6">
+                            <button onClick={capturePhoto} className={`w-24 h-24 rounded-full border-4 flex items-center justify-center transition-all active:scale-90 ${scanMode === 'video' ? 'border-red-500/20' : 'border-white/10'}`}>
+                               <div className={`w-16 h-16 rounded-full shadow-2xl ${isRecording ? 'bg-red-600 animate-pulse rounded-2xl' : (scanMode === 'video' ? 'bg-red-600/40' : 'bg-sage')}`} />
+                            </button>
+                            
+                            {!isRecording && (
+                              <label className="w-16 h-16 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center cursor-pointer hover:bg-white/10 transition-all hover:scale-105 active:scale-95 group">
+                                <Sparkles className="w-6 h-6 text-white/40 group-hover:text-sage transition-colors" />
+                                <input 
+                                  type="file" 
+                                  className="hidden" 
+                                  accept={analysisType === 'voice' ? 'audio/*' : 'video/*,image/*'}
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    setScanStep('analyzing');
+                                    stopCamera();
+                                    // Simulation of processing "shared" file
+                                    setTimeout(() => {
+                                      analyzeResult(lang === 'bn' ? `একটি ${file.type.includes('video') ? 'ভিডিও' : 'অডিও'} ফাইল শেয়ার করা হয়েছে: ${file.name}` : `Shared a ${file.type.includes('video') ? 'video' : 'audio'} file: ${file.name}`);
+                                    }, 2000);
+                                  }}
+                                />
+                                <div className="absolute -bottom-6 text-[8px] font-black text-white/20 uppercase tracking-widest">{lang === 'bn' ? 'ফাইল শেয়ার' : 'SHARE FILE'}</div>
+                              </label>
+                            )}
+                         </div>
                          <button onClick={() => { stopCamera(); setIsScanning(false); }} className="text-white/20 hover:text-white font-black uppercase tracking-[0.5em] text-[12px]">{currentT.cancel}</button>
                       </div>
                    </div>
@@ -2074,7 +2101,12 @@ export default function App() {
                         <div className="relative w-80 h-80 mx-auto flex items-center justify-center">
                            <motion.div animate={{ scale: [1, 2.5, 1], opacity: [0.1, 0, 0.1] }} transition={{ duration: 2, repeat: Infinity }} className="absolute inset-0 bg-sage rounded-full" />
                            <motion.div animate={{ scale: [1, 1.8, 1] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute inset-10 border-4 border-sage/20 rounded-full" />
-                           <div className={`w-40 h-40 rounded-full flex items-center justify-center z-10 transition-all ${isRecording ? 'bg-red-600 scale-90 shadow-[0_0_100px_rgba(220,38,38,0.5)]' : 'bg-sage shadow-[0_0_100px_rgba(132,204,22,0.5)]'}`} onClick={() => isRecording && stopRecording()}><Mic className="w-20 h-20 text-black" /></div>
+                           <div 
+                            className={`w-40 h-40 rounded-full flex items-center justify-center z-10 cursor-pointer transition-all ${isRecording ? 'bg-red-600 scale-90 shadow-[0_0_100px_rgba(220,38,38,0.5)]' : 'bg-sage shadow-[0_0_100px_rgba(132,204,22,0.5)]'}`} 
+                            onClick={() => isRecording ? stopRecording() : startRecording()}
+                           >
+                            <Mic className={`w-20 h-20 ${isRecording ? 'text-white' : 'text-black'}`} />
+                           </div>
                         </div>
                         <div className="space-y-8">
                            <h2 className="text-5xl font-serif font-black tracking-tighter uppercase">{isRecording ? (currentT as any).listeningLabel : currentT.listening}</h2>
