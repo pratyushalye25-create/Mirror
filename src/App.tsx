@@ -1,2276 +1,2869 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- * Version: 1.0.3 - README added & Core Sync Fix
- */
-
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Camera, 
-  MessageSquare, 
-  Mic, 
-  ShieldCheck, 
+  ChevronDown, 
+  Infinity, 
+  Menu, 
+  X, 
+  Activity, 
+  Lock, 
+  Unlock, 
   Sparkles, 
+  CheckCircle, 
+  CreditCard, 
   ArrowRight,
-  CheckCircle2,
-  Lock,
-  Heart,
-  Zap,
-  Globe,
-  LogOut,
-  User as UserIcon,
-  CloudRain,
-  Trees,
-  Trophy,
-  Flame,
-  Star,
-  LayoutDashboard,
-  History,
-  BookOpen,
-  Settings,
-  ChevronRight,
-  CheckCircle,
+  Flame, 
+  User, 
+  Compass, 
+  Brain, 
+  Award, 
+  Send, 
+  Camera, 
+  Volume2, 
+  VolumeX, 
+  Trash2, 
   Clock,
-  Waves,
-  Brain,
-  Wind,
-  Trash2,
-  Menu,
-  X,
-  Activity,
+  RefreshCw,
+  Plus,
   Info,
-  CreditCard
+  LayoutDashboard,
+  LogOut,
+  Mic,
+  FileText
 } from 'lucide-react';
 import { 
-  LineChart, 
-  Line, 
+  AreaChart, 
+  Area, 
   XAxis, 
   YAxis, 
-  CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer,
-  AreaChart,
-  Area
+  ResponsiveContainer 
 } from 'recharts';
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, addDoc, collection, serverTimestamp, getDocs, query, orderBy, limit, increment, deleteDoc } from 'firebase/firestore';
-import { auth, db, signInWithGoogle, logOut, OperationType, handleFirestoreError } from './lib/firebase';
-import sadGirl from './assets/images/sad_girl_emotion_1779010959620.png';
-import happyGirl from './assets/images/happy_girl_emotion_1779011011196.png';
-import tiredGirl from './assets/images/tired_girl_emotion_1779010995009.png';
 
-interface UserData {
-  uid: string;
-  points: number;
-  streak: number;
-  lastCheckIn?: any;
-  sessionStartedAt?: any;
-  sessionCooldownUntil?: any;
-  badges: string[];
-  displayName?: string;
-  photoURL?: string;
-  gameProgress?: Record<string, number>;
-  createdAt?: any;
+import { auth, db, signInWithGoogle, logOut } from './lib/firebase';
+import { doc, getDoc, setDoc, updateDoc, collection, addDoc, getDocs, query, orderBy, limit, deleteDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+
+const BG_VIDEO = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260511_230229_7c9bc431-46cf-489a-948d-e8144d8eb5d4.mp4';
+
+// 9 types of guided breathing exercises
+const guidedExercises = [
+  {
+    id: 'box',
+    nameEn: "Sama Vritti (Box Breathing)",
+    nameBn: "সমবৃত্তি (বক্স ব্রিদিং)",
+    descEn: "Standard 4-segment balancing pattern. Clears mental static.",
+    descBn: "৪-ধাপের ফুসফুসীয় সমতা নির্ধারণকারী রিদম। মস্তিষ্ক শান্ত করে।",
+    inhale: 4, hold: 4, exhale: 4, rest: 4,
+    benefitEn: "Balances nervous system & center of focus.",
+    benefitBn: "স্নায়ুতন্ত্রের ক্লান্তি ও একাগ্রতাহীনতা দূর করে।"
+  },
+  {
+    id: 'sleep',
+    nameEn: "4-7-8 Deep Sleep Method",
+    nameBn: "৪-৭-৮ গভীর ঘুম পদ্ধতি",
+    descEn: "Celebrated tranquilizing style to switch off adrenaline rushes.",
+    descBn: "ঘুমের পূর্বে অতিরিক্ত ক্লান্তি বা উত্তেজনা কমানোর প্রাকৃতিক পদ্ধতি।",
+    inhale: 4, hold: 7, exhale: 8, rest: 0,
+    benefitEn: "Deep cellular oxygenation & stress shutdown.",
+    benefitBn: "গভীর সেলুলার অক্সিজেনেশন এবং মানসিক চাপ নিষ্ক্রিয়করণ।"
+  },
+  {
+    id: 'coherent',
+    nameEn: "Primal Coherent Breathing",
+    nameBn: "প্রাইমাল কোহেরেন্ট ব্রিদিং",
+    descEn: "Equidistant inhalation and exhalation. Builds raw stability.",
+    descBn: "সমান মেয়াদের জটিল শ্বাসক্রিয়া। হৃদস্পন্দনের ভারসাম্য বৃদ্ধি করে।",
+    inhale: 5, hold: 0, exhale: 5, rest: 0,
+    benefitEn: "Regulates heart-rate variability & raw focus.",
+    benefitBn: "হৃদস্পন্দন রিদম এবং শারীরিক স্থায়িত্ব বাড়ায়।"
+  },
+  {
+    id: 'resilience',
+    nameEn: "Grounding Resilience Cycle",
+    nameBn: "গ্রাউন্ডিং রেজিলিয়েন্স চক্র",
+    descEn: "Elongated exhalations to amplify immediate calmness.",
+    descBn: "শ্বাস ছাড়ার দীর্ঘায়িত প্রক্রিয়া দিয়ে আকস্মিক উত্তেজনা উপশম করা।",
+    inhale: 6, hold: 4, exhale: 7, rest: 2,
+    benefitEn: "Activates the parasympathetic nervous system.",
+    benefitBn: "প্যারাসিমপ্যাথেটিক স্নায়ুতন্ত্রকে অবিলম্বে সক্রিয় করে।"
+  },
+  {
+    id: 'energizer',
+    nameEn: "Kapalabhati Aura Energizer",
+    nameBn: "কপালভাতি অরা এনার্জাইজার",
+    descEn: "Rapid active exhalations paired with short passive inhalations.",
+    descBn: "দ্রুত ও সক্রিয় নিঃশ্বাস ত্যাগের মাধ্যমে ফোকাস দ্বিগুণের পদ্ধতি।",
+    inhale: 2, hold: 0, exhale: 2, rest: 0,
+    benefitEn: "Elevates mental alertness & unlocks fresh chi/prana.",
+    benefitBn: "মানসিক সতর্কতা বাড়ায় এবং ফ্রেশ প্রাণশক্তি বৃদ্ধি করে।"
+  },
+  {
+    id: 'zen',
+    nameEn: "Zen Mind Clarity Flow",
+    nameBn: "জেন মাইন্ড ক্ল্যারিটি ফ্লো",
+    descEn: "Steady deep breaths for visual and cognitive calibration.",
+    descBn: "ভিজ্যুয়াল এবং মানসিক একাগ্রতা ফিরে পাওয়ার শান্ত ধ্যান ফ্লো।",
+    inhale: 5, hold: 2, exhale: 5, rest: 2,
+    benefitEn: "Calms sensory overstimulation & overthinking.",
+    benefitBn: "ইন্দ্রিয়ের অতিরিক্ত উত্তেজনা ও ওভারথিংকিং শান্ত করে।"
+  },
+  {
+    id: 'resonance',
+    nameEn: "Sudarshan Cosmic Resonance",
+    nameBn: "সুদর্শন কসমিক রেজোন্যান্স",
+    descEn: "Deep rhythmic breathing to match spiritual core vibration.",
+    descBn: "মেডিটেটিভ কসমিক ছন্দে আত্মিক চেতনা প্রসারিত করার পদ্ধতি।",
+    inhale: 6, hold: 6, exhale: 6, rest: 0,
+    benefitEn: "Harmonizes internal spiritual flows and energy lanes.",
+    benefitBn: "আভ্যন্তরীণ আধ্যাত্মিক চক্র এবং শক্তি প্রবাহে সামঞ্জস্য আনে।"
+  },
+  {
+    id: 'anulom',
+    nameEn: "Anulom Vilom (Hemisphere Balance)",
+    nameBn: "অনুলোম বিলোম (মস্তিষ্ক হ্যামিস্ফিয়ার ব্যালেন্স)",
+    descEn: "Alternating dual sensory channels to balance left/right brain.",
+    descBn: "মস্তিষ্কের ডান ও বাম অংশের মধ্যে কোঅর্ডিনেশন বা ভারসাম্য বজায় রাখা।",
+    inhale: 4, hold: 4, exhale: 6, rest: 0,
+    benefitEn: "Coordinates logical and creative cognitive pathways.",
+    benefitBn: "যৌক্তিক এবং সৃজনশীল স্নায়বিক পথগুলির সমন্বয় সাধন করে।"
+  },
+  {
+    id: 'transcendental',
+    nameEn: "Cosmic Transcendental Path",
+    nameBn: "কসমিক ট্রান্সেন্ডেন্টাল পাথ",
+    descEn: "Exceedingly deep respiratory holds for absolute aura alignment.",
+    descBn: "গভীর আধ্যাত্মিক আভা এবং কসমিক চ্যানেল উন্মুক্ত করার উচ্চ মাত্রার শ্বাসক্রিয়া।",
+    inhale: 7, hold: 3, exhale: 7, rest: 1,
+    benefitEn: "Deep core self-transcendence & mindfulness alignment.",
+    benefitBn: "উচ্চ ধ্যানাবস্থা অর্জন এবং সুপ্ত প্রতিভা উজ্জীবিত করা।"
+  }
+];
+
+// 6 Mystical Motivation Mystery Cards for diagnostics
+const MYSTERY_CARDS = [
+  {
+    id: 1,
+    titleEn: "Card of Renewal",
+    titleBn: "নবজাগরণের কার্ড",
+    descEn: "Within your heavy hours, a bright star is aligning to illuminate your courage. Rise high!",
+    descBn: "আপনার অন্ধকারের মাঝেও একটি উজ্জ্বল নক্ষত্র আপনার সাহসকে প্রজ্বলিত করছে। জেগে উঠুন!",
+    color: "from-pink-500/20 via-purple-500/15 to-pink-500/5",
+    borderColor: "border-pink-500/40",
+    glow: "shadow-pink-500/20"
+  },
+  {
+    id: 2,
+    titleEn: "Card of Cosmic Fire",
+    titleBn: "মহাজাগতিক অগ্নির কার্ড",
+    descEn: "The spiritual spark inside you cannot be dimmed by earthly clouds. Reclaim your crown!",
+    descBn: "আপনার ভেতরের আধ্যাত্মিক স্ফুলিঙ্গ পার্থিব মেঘের দ্বারা ম্লান হবে না। নিজের মুকুট পুনরুদ্ধার করুন!",
+    color: "from-orange-500/20 via-red-500/15 to-orange-500/5",
+    borderColor: "border-orange-500/40",
+    glow: "shadow-orange-500/20"
+  },
+  {
+    id: 3,
+    titleEn: "Card of Ocean Serenity",
+    titleBn: "সমুদ্র প্রশান্তির কার্ড",
+    descEn: "Let the vast ocean of deep peace dissolve your limits. You are complete and free.",
+    descBn: "গভীর প্রশান্তির মহাসাগর আপনার সমস্ত সীমাবদ্ধতা দ্রবীভূত করুক। আপনি সম্পূর্ণ এবং মুক্ত।",
+    color: "from-cyan-500/20 via-blue-500/15 to-blue-500/5",
+    borderColor: "border-blue-500/40",
+    glow: "shadow-blue-500/20"
+  },
+  {
+    id: 4,
+    titleEn: "Card of Golden Guidance",
+    titleBn: "সোনালী পথপ্রদর্শকের কার্ড",
+    descEn: "Trust the unseen cosmic coordinate. Everything is falling beautifully into place for you.",
+    descBn: "অদৃশ্য মহাজাগতিক সংযোগের ওপর আস্থা রাখুন। আপনার জন্য সবকিছুই সুন্দরভাবে প্রস্তুত হচ্ছে।",
+    color: "from-yellow-500/20 via-amber-500/15 to-amber-500/5",
+    borderColor: "border-yellow-500/40",
+    glow: "shadow-yellow-500/20"
+  },
+  {
+    id: 5,
+    titleEn: "Card of Core Grounding",
+    titleBn: "ভিত্তি সংযোগের কার্ড",
+    descEn: "In quietness, you discover raw power. Breathe in your soul reserves, you are steady.",
+    descBn: "নীরবতার মাঝে আপনি অসীম শক্তির সন্ধান পাবেন। গভীর শ্বাস নিন, আপনি স্থির ও শক্তিশালী।",
+    color: "from-teal-500/20 via-emerald-500/15 to-emerald-500/5",
+    borderColor: "border-emerald-500/40",
+    glow: "shadow-emerald-500/20"
+  },
+  {
+    id: 6,
+    titleEn: "Card of Cosmic Rebirth",
+    titleBn: "আত্মিক পুনর্জন্মের কার্ড",
+    descEn: "Every breath is a clean sheet. Yesterday is dust, today you write a glorious saga.",
+    descBn: "প্রতিটি শ্বাস এক একটি নতুন সূচনার ইঙ্গিত। অতীতকে ছাড়ুন, আজ আপনার বিজয়ের মহাকাব্য লিখুন।",
+    color: "from-purple-500/20 via-indigo-500/15 to-indigo-500/5",
+    borderColor: "border-indigo-500/40",
+    glow: "shadow-indigo-500/20"
+  }
+];
+
+// App translations
+const translations = {
+  en: {
+    title: "MindMirror - Pratyusha's Edition",
+    pricingTitle: "Pricing Options",
+    successPlan: "Your Success Plan",
+    readyToAnalyze: "Ready to Analyze",
+    systemLocked: "System Locked",
+    cameraError: "Camera permission denied or unavailable",
+    sessionEnd: "Mindful check-in complete",
+    sessionStarted: "Check-in initiated. Embrace peace.",
+    deleteSuccess: "Journal entry deleted.",
+    pointsSuccess: "Points and blessings collected (+100 MW)",
+    newGameUnlocked: "Congratulations! Cosmic Reflexes game unlocked!",
+    gameComplete: "Reflexes complete! Energy level heightened (+150 MW)",
+    gameLocked: "Locked! Reach Level 2 or earn 200 MindPower to unlock.",
+    sessionWarning: "Take a deep breath and wait for cooling down.",
+    getStarted: "Begin Now",
+    privacyBadge: "Zero-Recording Trust Badge",
+    privacyDisclaimer: "No video is recorded or sent to any server. Our local AI model reads frame pixels completely on-device to reflect your energy level.",
+    tabDashboard: "Dashboard",
+    tabMirror: "The Deep Mirror",
+    tabCoach: "Aura Coach",
+    tabJournal: "Reflection Log",
+    tabPlayground: "Mind Playground",
+    welcome: "Welcome to MindMirror",
+    subtitle: "Premium AI-powered mental wellness companion",
+    scanStart: "Begin Scanner",
+    scanEyesClose: "Phase 1: Close your eyes and breathe...",
+    scanEyesOpen: "Phase 2: Open eyes, focus into the deep mirror...",
+    scanAnalyzing: "Hues matching aura frequency. Formulating guidance...",
+    coachWelcome: "Peace be with you. I am Aura, your mentor and spiritual sanctuary guide. How are you carrying your soul today?",
+    coachPlaceholder: "Tell Aura your thoughts or feelings...",
+    coachingResponse: "Spiritual Reflection",
+    speakMute: "Mute voice guidance",
+    speakUnmute: "Enable companion voice",
+    journalHeading: "Spiritual Notebook",
+    journalPlaceholder: "Pour your heart onto this digital parchment. Aura will reflect back the whispers of your raw thoughts...",
+    journalAddBtn: "Imprint into History",
+    historyTitle: "Past Echoes",
+    noHistory: "No reflections etched yet. Take a scanner check-in or write a diary.",
+    focusBreathing: "Focus Breath Cycle",
+    focusBreathingDesc: "Harmonize your nervous system with quantum respiratory feedback loops.",
+    reflexesGame: "Cosmic Reflexes",
+    reflexesDesc: "Calibrate your coordination by tapping volatile star energy nodes.",
+    reflexesBtn: "Ignite Cosmic Reflexes"
+  },
+  bn: {
+    title: "মাইন্ডমিরর - প্রত্যুষা এডিশন",
+    pricingTitle: "মূল্য নির্ধারণ",
+    successPlan: "আপনার সাকসেস প্ল্যান",
+    readyToAnalyze: "বিশ্লেষণ করতে প্রস্তুত",
+    systemLocked: "সিস্টেম লকড",
+    cameraError: "ক্যামেরা পারমিশন পাওয়া যায়নি বা ডিভাইস ব্লকড",
+    sessionEnd: "মাইন্ডফুল চেক-ইন সম্পন্ন হয়েছে",
+    sessionStarted: "চেক-ইন শুরু হয়েছে। শান্তি অনুভব করুন।",
+    deleteSuccess: "জার্নাল ডায়েরি মুছে ফেলা হয়েছে।",
+    pointsSuccess: "পয়েন্ট এবং আশীর্বাদ অর্জিত হয়েছে (+১০০ MW)",
+    newGameUnlocked: "অভিনন্দন! কসমিক রিফ্লেক্সেস গেমটি আনলক হয়েছে!",
+    gameComplete: "রিফ্লেক্সেস সম্পন্ন! মানসিক শক্তি বৃদ্ধি পেয়েছে (+১৫০ MW)",
+    gameLocked: "লকড! লেভেল ২ অর্জন করুন অথবা ২০০ মাইন্ডপাওয়ার আয় করুন।",
+    sessionWarning: "অনুগ্রহ করে শান্ত হয়ে ঠান্ডা হওয়া পর্যন্ত অপেক্ষা করুন।",
+    getStarted: "শুরু করুন",
+    privacyBadge: "জিরো-রেকর্ডিং ট্রাস্ট ব্যাজ",
+    privacyDisclaimer: "কোনো ভিডিও রেকর্ড করা হচ্ছে না। আমাদের লোকাল এআই মডেল শুধুমাত্র রিয়েল-টাইমে আবেগ প্রতিফলিত করার জন্য পিক্সেল রিড করে।",
+    tabDashboard: "ড্যাশবোর্ড",
+    tabMirror: "দ্য ডিপ মিরর",
+    tabCoach: "অরা কোচ",
+    tabJournal: "রিফ্লেকশন লগ",
+    tabPlayground: "মাইন্ড প্লেগ্রাউন্ড",
+    welcome: "মাইন্ডমিররে স্বাগতম",
+    subtitle: "এআই চালিত প্রিমিয়াম মানসিক সুস্থতার সহচর",
+    scanStart: "স্ক্যানার শুরু করুন",
+    scanEyesClose: "১ম ধাপ: চোখ বন্ধ রাখুন এবং শ্বাস নিন...",
+    scanEyesOpen: "২য় ধাপ: চোখ খুলুন এবং গভীর আয়নায় তাকান...",
+    scanAnalyzing: "আভা শনাক্ত হচ্ছে। আধ্যাত্মিক দিকনির্দেশনা তৈরি করা হচ্ছে...",
+    coachWelcome: "আপনার উপর শান্তি বর্ষিত হোক। আমি অরা, আপনার আত্মিক মেন্টর। আজ আপনার মনের অনুভূতি কেমন?",
+    coachPlaceholder: "অরাকে আপনার মনের গোপন কথা বলুন...",
+    coachingResponse: "আত্মিক প্রতিফলন",
+    speakMute: "কণ্ঠস্বর বন্ধ করুন",
+    speakUnmute: "সহচরের কণ্ঠ সচল করুন",
+    journalHeading: "আধ্যাত্মিক নোটবুক",
+    journalPlaceholder: "এই ডিজিটাল পার্চমেন্টে আপনার মনের কথা উজাড় করে লিখুন। অরা আপনার কাঁচা চিন্তাগুলোর প্রতিধ্বনি প্রতিফলিত করবে...",
+    journalAddBtn: "ইতিহাসে খোদাই করুন",
+    historyTitle: "অতীতের প্রতিধ্বনি",
+    noHistory: "এখনো কোনো প্রতিফলন খোদাই করা হয়নি। স্ক্যানার বা ডায়েরি দিয়ে প্রথম প্রতিফলন যোগ করুন।",
+    focusBreathing: "ফোকাস ব্রিদিং চক্র",
+    focusBreathingDesc: "কোয়ান্টাম শ্বাস-প্রশ্বাসের ফিডব্যাক লুপ দিয়ে আপনার স্নায়ুতন্ত্রকে সামঞ্জস্য করুন।",
+    reflexesGame: "কসমিক রিফ্লেক্সেস",
+    reflexesDesc: "উড়ন্ত নক্ষত্র শক্তি নোডগুলিতে আলতো চাপ দিয়ে আপনার একাগ্রতা পরীক্ষা করুন।",
+    reflexesBtn: "কসমিক রিফ্লেক্সেস খেলুন"
+  }
+};
+
+interface LoginRequiredViewProps {
+  tab: string;
+  lang: 'en' | 'bn';
+  currentT: any;
+  onSignIn: () => Promise<any>;
 }
 
-interface CheckInRecord {
-  id: string;
-  reflection: string;
-  timestamp: any;
-  type: 'face' | 'voice' | 'text';
+function LoginRequiredView({ tab, lang, currentT, onSignIn }: LoginRequiredViewProps) {
+  const tabName = 
+    tab === 'mirror' ? (lang === 'bn' ? 'দ্য ডিপ মিরর (The Deep Mirror)' : 'The Deep Mirror') :
+    tab === 'coach' ? (lang === 'bn' ? 'অরা কোচ (Aura Coach)' : 'Aura Coach') :
+    tab === 'journal' ? (lang === 'bn' ? 'রিফ্লেকশন লগ (Reflection Log)' : 'Reflection Log') :
+    (lang === 'bn' ? 'মাইন্ড প্লেগ্রাউন্ড (Mind Playground)' : 'Mind Playground');
+
+  const titleText = lang === 'bn' ? "প্রবেশাধিকার অবরুদ্ধ" : "Access Restricted";
+  const descText = lang === 'bn' 
+    ? `অনুগ্রহ করে লগইন করুন। ${tabName} ফিচারটি দেখতে ও ব্যবহার করতে গুগল একাউন্ট সংযোগ করা আবশ্যক। এটি সম্পূর্ণ ফ্রি এবং আপনার ডেটা সুরক্ষিত রাখে।` 
+    : `Please log in to continue. Connecting your Google account is required to view and unlock ${tabName} features securely.`;
+  
+  const buttonText = lang === 'bn' ? "গুগল অ্যাকাউন্ট সংযুক্ত করুন" : "Connect Google Account";
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="max-w-md mx-auto my-12 p-8 sm:p-10 rounded-[36px] bg-[#0d0d1e]/85 border border-white/5 shadow-2xl backdrop-blur-3xl text-center space-y-6 flex flex-col items-center justify-center relative overflow-hidden"
+    >
+      <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-purple-500/10 to-transparent pointer-events-none" />
+      
+      {/* Locked animated icon badge */}
+      <div className="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 relative group">
+        <div className="absolute inset-0 rounded-full border border-rose-500/5 bg-rose-500/5 animate-pulse" />
+        <Lock size={26} strokeWidth={2.5} className="group-hover:scale-110 transition-transform duration-300" />
+      </div>
+
+      <div className="space-y-2">
+        <h3 className="text-xl sm:text-2xl font-serif font-bold text-white uppercase tracking-tight">{titleText}</h3>
+        <p className="text-[10px] text-rose-400 font-black tracking-widest uppercase">{lang === 'bn' ? 'সহজ লগইন সংযোগ' : 'LOGIN TO CONTINUE'}</p>
+      </div>
+
+      <p className="text-[12px] text-white/70 leading-relaxed font-serif max-w-sm">
+        {descText}
+      </p>
+
+      <button
+        onClick={async () => {
+          try {
+            await onSignIn();
+          } catch (e) {
+            console.error(e);
+          }
+        }}
+        className="w-full h-14 bg-white hover:bg-white/90 text-black font-extrabold uppercase tracking-widest text-xs rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-white/5 active:scale-95 transition-all cursor-pointer"
+      >
+        <User size={14} strokeWidth={2.5} />
+        <span>{buttonText}</span>
+      </button>
+
+      <div className="text-[10px] text-white/35">
+        🔒 {lang === 'bn' ? 'আপনার ব্যক্তিগত ডায়েরি ও রিফ্লেকশন লগ চিরকাল সুরক্ষিত থাকবে।' : 'Your digital reflections and notes are strictly confidential & secure.'}
+      </div>
+    </motion.div>
+  );
 }
 
 export default function App() {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [showNotification, setShowNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
-  const [sessionTimeLeft, setSessionTimeLeft] = useState<string | null>(null);
-  const [onCooldown, setOnCooldown] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanStep, setScanStep] = useState<'camera' | 'analyzing' | 'result'>('camera');
-  const [aiReflection, setAiReflection] = useState('');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'exercises' | 'games' | 'coach' | 'lab'>('dashboard');
-  const [labPrompt, setLabPrompt] = useState('');
-  const [labTemperature, setLabTemperature] = useState(0.4);
-  const [labOutput, setLabOutput] = useState('');
-  const [isExecutingLab, setIsExecutingLab] = useState(false);
-  const [activeGame, setActiveGame] = useState<'memory' | 'focus' | null>(null);
-  const [hasUnlockedDeepMirror, setHasUnlockedDeepMirror] = useState(false);
-  const [showUnlockToast, setShowUnlockToast] = useState(false);
-  const [analysisOutputs, setAnalysisOutputs] = useState<{text?: string, voice?: string, face?: string}>({});
-  const [memoryCards, setMemoryCards] = useState<{ id: number, symbol: string, isFlipped: boolean, isMatched: boolean }[]>([]);
-  const [flippedIndices, setFlippedIndices] = useState<number[]>([]);
-  const [gameScore, setGameScore] = useState(0);
-  const [focusTarget, setFocusTarget] = useState<{ x: number, y: number, id: number } | null>(null);
-  const [focusHits, setFocusHits] = useState(0);
-  const [history, setHistory] = useState<CheckInRecord[]>([]);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [scanMode, setScanMode] = useState<'photo' | 'video'>('photo');
-  const [analysisType, setAnalysisType] = useState<'face' | 'text' | 'voice'>('face');
-  const [journalText, setJournalText] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [transcription, setTranscription] = useState('');
-  const [lang, setLang] = useState<'bn' | 'en'>('bn');
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isCollecting, setIsCollecting] = useState(false);
-  const [selectedSupportType, setSelectedSupportType] = useState<string | null>(null);
-  const [supportMessage, setSupportMessage] = useState('');
-  const [generatingSupport, setGeneratingSupport] = useState(false);
-  const [activeExercise, setActiveExercise] = useState<any>(null);
-  const [exerciseStep, setExerciseStep] = useState(0);
-  const [exerciseTimeLeft, setExerciseTimeLeft] = useState(0);
-  const [dailyAffirmation, setDailyAffirmation] = useState('');
-  const [chatMessages, setChatMessages] = useState<{role: 'user' | 'assistant', text: string}[]>([]);
-  const [isChatting, setIsChatting] = useState(false);
-  const [coachInput, setCoachInput] = useState('');
+  const [lang, setLang] = useState<'en' | 'bn'>('en');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'mirror' | 'coach' | 'journal' | 'playground'>('dashboard');
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // User status/Gamification
+  const [user, setUser] = useState<any>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [points, setPoints] = useState(350);
+  const [streak, setStreak] = useState(5);
+  const [badges, setBadges] = useState<string[]>(["Clarity Initiate", "Brave Observer"]);
+  const [gameUnlocked, setGameUnlocked] = useState(false);
+
+  // Scanner States
+  const [scannerActive, setScannerActive] = useState(false);
+  const [scanStep, setScanStep] = useState<'idle' | 'close' | 'open' | 'analyzing' | 'done'>('idle');
+  const [scanCountdown, setScanCountdown] = useState(0);
+  const [scanReflection, setScanReflection] = useState<string>("");
+  const [scannerLoading, setScannerLoading] = useState(false);
+  const [scannerMode, setScannerMode] = useState<'camera' | 'voice' | 'text'>('camera');
+  const [scanMood, setScanMood] = useState<'good' | 'bad' | 'calm' | 'stressed'>('good');
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
+  const [voiceSecs, setVoiceSecs] = useState(0);
+  const [textScanInput, setTextScanInput] = useState("");
+  const [cameraClickFlash, setCameraClickFlash] = useState(false);
+  const [cameraRecording, setCameraRecording] = useState(false);
+  const [cameraRecordingSecs, setCameraRecordingSecs] = useState(0);
+
+  // Popup / Diagnostic & Motivation Card states
+  const [tempReflection, setTempReflection] = useState<string>("");
+  const [showDiagnosticPopup, setShowDiagnosticPopup] = useState(false);
+  const [popupSubStep, setPopupSubStep] = useState<'choice' | 'cards'>('choice');
+  const [ttsOption, setTtsOption] = useState<'speak' | 'read' | null>(null);
+  const [selectedMysteryCard, setSelectedMysteryCard] = useState<number | null>(null);
+
+  // Quantum resonance core matrix telemetry state
+  const [telemetryChakra, setTelemetryChakra] = useState<string>("Heart Balance");
+  const [telemetryFreq, setTelemetryFreq] = useState<string>("432.000");
+  const [telemetryCoherence, setTelemetryCoherence] = useState<string>("85.5");
+  const [telemetrySignature, setTelemetrySignature] = useState<string>("CE61FD");
+
+  // Video streams
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  // Coach states
+  const [coachMessages, setCoachMessages] = useState<Array<{role: 'user' | 'aura', text: string}>>([]);
+  const [coachInput, setCoachInput] = useState("");
+  const [coachLoading, setCoachLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(true);
-  const [activeSound, setActiveSound] = useState<'none' | 'rain' | 'forest' | 'ocean'>('none');
+
+  // Journal Notebook States
+  const [journalInput, setJournalInput] = useState("");
+  const [journalHistory, setJournalHistory] = useState<Array<{ id: string; timestamp: string; reflection: string; type: string; score: number }>>([]);
+  const [journalLoading, setJournalLoading] = useState(false);
+
+  // Guided Exercises State (9 types)
+  const [activeExerciseIdx, setActiveExerciseIdx] = useState(0);
+
+  // Breathing game
+  const [breathingStep, setBreathingStep] = useState<'inhale' | 'hold' | 'exhale' | 'rest'>('inhale');
+  const [breathingSecs, setBreathingSecs] = useState(4);
+
+  // Sequentially Unlocked Games State
+  const [activeGameId, setActiveGameId] = useState<'reflexes' | 'harmony' | 'sequence'>('reflexes');
+  const [game1Plays, setGame1Plays] = useState<number>(0);
+  const [game2Plays, setGame2Plays] = useState<number>(0);
+  const [game3Plays, setGame3Plays] = useState<number>(0);
+
+  // Game 2 (Aura Shifting Harmony / Stroop Match) States
+  const [isPlayingGame2, setIsPlayingGame2] = useState(false);
+  const [game2Score, setGame2Score] = useState(0);
+  const [game2TimeLeft, setGame2TimeLeft] = useState(15);
+  const [stroopWord, setStroopWord] = useState<'SAGE' | 'PURPLE' | 'BLUE' | 'ORANGE'>('SAGE');
+  const [stroopColor, setStroopColor] = useState<'SAGE' | 'PURPLE' | 'BLUE' | 'ORANGE'>('SAGE');
+
+  // Game 3 (Cosmic Path Sequence Memory / Simon) States
+  const [isPlayingGame3, setIsPlayingGame3] = useState(false);
+  const [game3Score, setGame3Score] = useState(0);
+  const [memorySequence, setMemorySequence] = useState<number[]>([]);
+  const [userAttempt, setUserAttempt] = useState<number[]>([]);
+  const [activeSequenceFlash, setActiveSequenceFlash] = useState<number | null>(null);
+  const [sequenceStep, setSequenceStep] = useState<'show' | 'input' | 'failed' | 'idle'>('idle');
+
+  // Reflexes Game States
+  const [isPlayingReflex, setIsPlayingReflex] = useState(false);
+  const [reflexScore, setReflexScore] = useState(0);
+  const [reflexTimeLeft, setReflexTimeLeft] = useState(15);
+  const [targetPos, setTargetPos] = useState({ top: '50%', left: '50%' });
+
+  // Notifications
+  const [showNotification, setShowNotification] = useState<{message: string; type: 'success' | 'error'} | null>(null);
+
+  // Pricing / Checkout state
   const [viewingPlan, setViewingPlan] = useState<any>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<any>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const toggleSound = (sound: 'rain' | 'forest' | 'ocean') => {
-    if (activeSound === sound) {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-      setActiveSound('none');
-    } else {
-      if (audioRef.current) audioRef.current.pause();
-      const soundUrls: Record<string, string> = {
-        rain: 'https://assets.mixkit.co/active_storage/sfx/2437/2437-preview.mp3',
-        forest: 'https://assets.mixkit.co/active_storage/sfx/2439/2439-preview.mp3',
-        ocean: 'https://assets.mixkit.co/active_storage/sfx/2441/2441-preview.mp3'
-      };
-      const audio = new Audio(soundUrls[sound]);
-      audio.loop = true;
-      audio.play();
-      audioRef.current = audio;
-      setActiveSound(sound);
-    }
-  };
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const recognitionRef = useRef<any>(null);
-  const recordingIntervalRef = useRef<any>(null);
+  const currentT = translations[lang];
 
-  const t = {
-    bn: {
-      appName: "MindMirror",
-      dashboard: "সেশন ড্যাশবোর্ড",
-      history: "আমার ইতিহাস",
-      exercises: "গাইডেড এক্সারসাইজ",
-      sessionStart: "Session Start করুন",
-      faceScan: "Face Scanning (৫০ Points)",
-      journaling: "Journaling",
-      voiceAnalysis: "Voice Analysis",
-      streak: "বর্তমান স্ট্রিক",
-      points: "মোট পয়েন্ট",
-      badges: "অর্জিত ব্যাজ",
-      heroTitlePart1: "আপনার ",
-      heroTitlePart2: "ফেস আর ভয়েস",
-      heroTitlePart3: " রিড করে মনের অবস্থা বলে দেবে AI",
-      heroDesc: "রিয়েল-টাইমে মনের স্ট্রেস লেয়ার বুঝুন একদম অ্যানোনিমাসলি। আপনার পার্সোনাল ডেটা ১০০% সিকিউর থাকে ডিভাইসের ভেতরেই।",
-      getStarted: "Get Started Free",
-      howItWorks: "কিভাবে কাজ করে?",
-      noJudgement: "No Judgement",
-      noJudgementDesc: "কোনো মানুষ আপনাকে বিচার করবে না। এটি এককভাবে আপনার ব্যক্তিগত স্পেস।",
-      privacyFirst: "Privacy First",
-      privacyFirstDesc: "আপনার ডেটা কোথাও স্টোর হয় না যদি না আপনি ক্লাউড ব্যাকআপ অন করেন।",
-      scienceBacked: "Scientifically Backed",
-      scienceBackedDesc: "Meaningful Conversations এবং ফেস এনালাইসিস এলগরিদম ব্যবহার করা হয়েছে স্ট্রেস লেভেল ডিটেকশনে।",
-      loginWithGoogle: "Google Login",
-      logout: "Log Out",
-      sessionRemaining: "সেশন বাকি:",
-      cooldown: "Cooldown:",
-      readyToAnalyze: "Ready to analyze",
-      systemLocked: "System Locked",
-      alignFace: "Align your face",
-      scanning: "MindMirror Scanning...",
-      decoding: "Decoding Emotional Layers...",
-      processingVideo: "Decoding Video Layers...",
-      processingImage: "Decoding Image Layers...",
-      collectPoints: "৫০ Points সংগ্রহ করুন",
-      cancel: "Cancel",
-      nextGoal: "Next Goal",
-      unlockingVoice: "Unlocking Voice Layer",
-      analysisReady: "MindMirror AI is ready",
-      listening: "MindMirror Listening...",
-      recordingVoice: "Recording your voice...",
-      writeJournal: "আপনার মনের কথা লিখে জানান...",
-      analyzeText: "Analyze Text",
-      voiceHint: "কথা বলুন, আমরা আপনার টোন এনালাইসিস করছি...",
-      pointsSuccess: "৫০ Points পয়েন্ট সংগ্রহ সফল হয়েছে!",
-      sessionWarning: "প্রথমে সেশন Start করুন!",
-      cameraError: "ক্যামেরা এক্সেস করা সম্ভব হচ্ছে না!",
-      sessionEnd: "আপনার ১ ঘন্টার সেশন শেষ। এখন ৩ ঘন্টা কোoldown পিরিয়ড।",
-      sessionStarted: "আপনার ১ ঘন্টার সেশন শুরু হয়েছে!",
-      faceAnalysis: "ফেস এনালাইসিস",
-      faceAnalysisDesc: "আপনার চেহারার মাইক্রো-এক্সপ্রেশন ডিটেক্ট করে আপনার মুড এর ইনস্ট্যান্ট ফিডব্যাক দেবে। AI বুঝবে কখন আপনি ক্লান্ত আর কখন ফোকাসড।",
-      textJournal: "টেক্সট জার্নাল",
-      textJournalDesc: "আপনার মনের কথা লিখে জানান। আমাদের Meaningful Conversations ইঞ্জিন আপনার ল্যাঙ্গুয়েজের প্যাটার্ন দেখে স্ট্রেস লেভেল প্রেডিক্ট করবে।",
-      voiceTone: "ভয়েস টোন",
-      voiceToneDesc: "আপনার গলার স্বরের কম্পাঙ্ক থেকেও AI বুজতে পারবে আপনার ভেতরে চাপা থাকা বড় কোনো এনজাইটি আছে কি না।",
-      quote: "সুস্থ মন, সফল জীবন।",
-      sidebarDesc: "MindMirror আপনাকে প্রতিদিন আরও গভীরভাবে নিজেকে চিনতে সাহায্য করে। আজ আপনার অনুভূতি শেয়ার করুন।",
-      historyTitle: "আপনার মেন্টাল লগ",
-      noRecords: "এখনো কোনো রেকর্ড নেই। আজই আপনার প্রথম স্ক্যান শুরু করুন।",
-      exercisePlaceholder: "নতুন সেশন শীঘ্রই আসছে",
-      deleteSuccess: "রেকর্ডটি মুছে ফেলা হয়েছে",
-      emotion: "আবেগ:",
-      motivation: "Motivation Speech",
-      happy: "Happy Message",
-      strong: "Strong Message",
-      emotional: "Deeply Emotional",
-      chooseCard: "আপনার সেশন মুডের উপর ভিত্তি করে একটি কার্ড বেছে নিন:",
-      backToReflection: "ফিরে যান",
-      affirmationTitle: "আজকের অনুপ্রেরণা",
-      quickCalm: "কুইক কাম",
-      breathing: "শ্বাস নিন",
-      hold: "ধরে রাখুন",
-      exhale: "শ্বাস ছাড়ুন",
-      exerciseComplete: "ব্যায়াম শেষ! দারুণ করেছেন!",
-      nextStep: "পরবর্তী ধাপ",
-      gratitudeTitle: "কৃতজ্ঞতা প্রকাশ",
-      groundingTitle: "গ্রাউন্ডিং টেকনিক",
-      powerPauseTitle: "পাওয়ার পজ",
-      coachTitle: "24/7 Empathetic Companion",
-      coachPlaceholder: "আপনার কম্প্যানিয়নকে কিছু জিজ্ঞাসা করুন...",
-      send: "পাঠান",
-      moodTrends: "মুড ট্রেন্স",
-      guideTitle: "কিভাবে শুরু করবেন?",
-      guideStep1: "১. সেশন স্টার্ট করুন: উপরের 'Start Session' বাটনে ক্লিক করে আপনার প্রতিদিনের ১ ঘন্টার উইন্ডোটি একটিভ করুন।",
-      guideStep2: "২. পছন্দের মিরর বেছে নিন: আপনি ফেস স্ক্যান, ভয়েস এনালাইসিস বা টেক্সট জার্নালিং বেছে নিতে পারেন।",
-      guideStep3: "৩. AI ফিডব্যাক ও পয়েন্ট: আপনার সেশনের পর MindMirror আপনাকে একটি ডিপ রিফ্লেকশন দেবে এবং আপনি ৫০ পয়েন্ট পাবেন।",
-      guideStep4: "৪. ডেইলি এক্সারসাইজ: মন শান্ত রাখতে গাইডেড ব্রিদিং বা মাইন্ডফুল স্ক্যান প্র্যাকটিস করুন।",
-      audioOutput: "অডিও আউটপুট",
-      stopAudio: "অডিও বন্ধ করুন",
-      landingSubtitle: "আপনার মনের প্রতিফলন দেখুন এক নতুন আঙ্গিকে।",
-      landingFeaturesTitle: "অ্যাডভান্সড এআই ফিচারসমূহ",
-      featVisual: "ভিজ্যুয়াল স্ক্যান",
-      featVisualDesc: "মাইক্রো-এক্সপ্রেশন এনালাইসিস করে আপনার মুড চিহ্নিত করে।",
-      featVocal: "ভয়েস রিফ্লেকশন",
-      featVocalDesc: "কণ্ঠস্বরের টোন এবং ফ্রিকুয়েন্সি থেকে স্ট্রেস লেভেল বুজতে পারে।",
-      featVerbal: "টেক্সট জার্নালিং",
-      featVerbalDesc: "আপনার লেখা থেকে আপনার মনের গভীরের অনুভূতিগুলো বের করে আনে।",
-      sadText: "মন যখন ভারাক্রান্ত...",
-      happyText: "আনন্দের মুহূর্তগুলো...",
-      celebrateText: "সাফল্যের উল্লাস!",
-      sukheMone: "সুস্থ মন, সফল জীবন।",
-      auraName: "Aura (অরা)",
-      auraStatus: "আপনার চেতনার সাথে যুক্ত",
-      auraIntro: "স্বাগতম। আমি অরা, আপনার আত্মিক পথপ্রদর্শক। আজ আপনার ভেতরে কেমন অনুভব করছেন?",
-      oceanSound: "সমুদ্রের ঢেউ",
-      gamesTitle: "ব্রেইন ব্যালান্স",
-      gamesSubtitle: "কগনিটিভ স্কিল বৃদ্ধি করুন",
-      memoryGame: "মেমোরি ফ্লো",
-      memoryDesc: "আপনার স্মরণশক্তি ও মনোযোগ পরীক্ষা করুন",
-      focusGame: "জেন ফোকাস",
-      focusDesc: "নিখুঁত লক্ষ্যে মনোযোগ স্থির রাখুন",
-      reflexesGame: "কসমিক রিফ্লেক্স",
-      reflexesDesc: "আপনার প্রতিক্রিয়ার গতি পরীক্ষা করুন",
-      locked: "লক করা",
-      unlockReq: "আগের গেমে ৩ বার জিতুন",
-      newGameUnlocked: "অভিনন্দন! নতুন গেম আনলক করা হয়েছে!",
-      score: "স্কোর",
-      playNow: "খেলুন",
-      gameComplete: "খেলা শেষ! দারুণ করেছেন!",
-      privacyBadge: "জিরো-রেকর্ডিং ট্রাস্ট ব্যাজ",
-      privacyDisclaimer: "কোনো ভিডিও রেকর্ড করা হচ্ছে না। আমাদের লোকাল এআই মডেল শুধুমাত্র রিয়েল-টাইমে আবেগ প্রতিফলিত করার জন্য পিক্সেল রিড করে।",
-      unlockedTitle: "আপনি দ্য ডিপ মিরর আনলক করেছেন!",
-      unlockedDesc: "৫ সেকেন্ডের কুইক স্ক্যান দিয়ে দেখুন আপনার এনার্জি লেভেল আপনার কথার সাথে মিলছে কি না।",
-      pricingTitle: "মূল্য নির্ধারণ",
-      successPlan: "আপনার সাকসেস প্ল্যান",
-      plan1Title: "দ্য ক্ল্যারিটি ফাউন্ডেশন",
-      plan1Outcome: "দৈনিক মুড ট্র্যাকিং এবং সচেতনতা",
-      plan1Features: ["আনলিমিটেড জার্নালিং", "টেক্সট এনালাইসিস", "বেসিক ইতিহাস", "প্রতিদিনের অনুপ্রেরণা"],
-      plan2Title: "দ্য ইমোশনাল রেজিলিয়েন্স প্রো",
-      plan2Outcome: "রিয়েল-টাইম স্ট্রেস ম্যানেজমেন্ট",
-      plan2Features: ["ফাউন্ডেশন প্ল্যানের সবকিছু+", "ভয়েস টোন এনালাইসিস", "দ্য ডিপ মিরর (ফেস)", "গাইডেড সাপোর্ট AI"],
-      plan3Title: "দ্য পিক পারফরম্যান্স স্যুট",
-      plan3Outcome: "ইমোশনাল ইন্টেলিজেন্স ও ফোকাস",
-      plan3Features: ["প্রো প্ল্যানের সবকিছু+", "অ্যাডভান্সড ট্রেন্ড ইনসাইটস", "ব্রেইন ব্যালেন্স গেমস", "প্রায়োরিটি কম্প্যানিয়ন এক্সেস"],
-      bestValue: "সেরা পছন্দ",
-      privacy: "প্রাইভেসি",
-      terms: "টার্মস",
-      support: "সাপোর্ট",
-      copyright: "© ২০২৬ MindMirror AI. আবেগের ঊর্ধ্বে।",
-      recordingLabel: "রেকর্ড হচ্ছে...",
-      listeningLabel: "শুনছি...",
-      dismiss: "বন্ধ করুন",
-    },
-    en: {
-      appName: "MindMirror",
-      dashboard: "Session Dashboard",
-      history: "My History",
-      exercises: "Guided Exercises",
-      sessionStart: "Start Session",
-      faceScan: "Face Scan (+50 Pts)",
-      journaling: "Journaling",
-      voiceAnalysis: "Voice Analysis",
-      streak: "Current Streak",
-      points: "Total Points",
-      badges: "Badges Earned",
-      heroTitlePart1: "AI reads your ",
-      heroTitlePart2: "Face & Voice",
-      heroTitlePart3: " to reveal your state of mind",
-      heroDesc: "Understand your mental stress layers in real-time, completely anonymously. Your personal data stays secure on your device.",
-      getStarted: "Get Started Free",
-      howItWorks: "How it works?",
-      noJudgement: "No Judgement",
-      noJudgementDesc: "No human will judge you. This is strictly your personal space.",
-      privacyFirst: "Privacy First",
-      privacyFirstDesc: "Your data is not stored anywhere unless you enable cloud backup.",
-      scienceBacked: "Scientifically Backed",
-      scienceBackedDesc: "Meaningful Conversations and face analysis algorithms are used for stress level detection.",
-      loginWithGoogle: "Google Login",
-      logout: "Log Out",
-      sessionRemaining: "Session Left:",
-      cooldown: "Cooldown:",
-      readyToAnalyze: "Ready to analyze",
-      systemLocked: "System Locked",
-      alignFace: "Align your face",
-      scanning: "MindMirror Scanning...",
-      decoding: "Decoding Emotional Layers...",
-      processingVideo: "Decoding Video Layers...",
-      processingImage: "Decoding Image Layers...",
-      collectPoints: "Collect 50 Points",
-      cancel: "Cancel",
-      nextGoal: "Next Goal",
-      unlockingVoice: "Unlocking Voice Layer",
-      analysisReady: "MindMirror AI is ready",
-      listening: "MindMirror Listening...",
-      recordingVoice: "Recording your voice...",
-      writeJournal: "Write down your thoughts...",
-      analyzeText: "Analyze Text",
-      voiceHint: "Speak naturally, we're analyzing your tone...",
-      pointsSuccess: "Successfully collected 50 points!",
-      sessionWarning: "Please start a session first!",
-      cameraError: "Unable to access camera!",
-      sessionEnd: "Your 1 hour session is over. 3 hours cooldown period starts now.",
-      sessionStarted: "Your 1 hour session has started!",
-      faceAnalysis: "Face Analysis",
-      faceAnalysisDesc: "Detects micro-expressions to give instant feedback on mood and focus.",
-      textJournal: "Text Journal",
-      textJournalDesc: "Share your thoughts. Our Meaningful Conversations engine predicts stress from language patterns.",
-      voiceTone: "Voice Tone",
-      voiceToneDesc: "AI analyzes frequency and tone to detect hidden anxiety.",
-      quote: "Healthy mind, successful life.",
-      sidebarDesc: "MindMirror helps you know yourself deeper every day. Share your feelings today.",
-      historyTitle: "Your Mental Log",
-      noRecords: "No records yet. Start your first scan today.",
-      exercisePlaceholder: "New sessions coming soon",
-      deleteSuccess: "Record deleted successfully",
-      emotion: "Emotion:",
-      motivation: "Motivation Speech",
-      happy: "Happy Message",
-      strong: "Strong Message",
-      emotional: "Deeply Emotional",
-      chooseCard: "Choose a card based on your session mood:",
-      backToReflection: "Go Back",
-      affirmationTitle: "Daily Affirmation",
-      quickCalm: "Quick Calm",
-      breathing: "Inhale",
-      hold: "Hold",
-      exhale: "Exhale",
-      exerciseComplete: "Exercise Complete! Well done!",
-      nextStep: "Next Step",
-      gratitudeTitle: "Grateful Heart",
-      groundingTitle: "Grounding Technique",
-      powerPauseTitle: "Power Pause",
-      coachTitle: "24/7 Empathetic Companion",
-      coachPlaceholder: "Ask your companion anything...",
-      send: "Send",
-      moodTrends: "Mood Trends",
-      guideTitle: "How to get started?",
-      guideStep1: "1. Start Session: Enable your daily 1-hour active window by clicking 'Start Session'.",
-      guideStep2: "2. Choose a Mirror: Select from face scanning, voice analysis, or text journaling.",
-      guideStep3: "3. AI Feedback & Points: After your session, MindMirror provides deep reflection and grants +50 points.",
-      guideStep4: "1. Daily Exercises: Practice guided breathing or mindful scans to maintain your wellness streak.",
-      audioOutput: "Audio Output",
-      stopAudio: "Stop Audio",
-      landingSubtitle: "Reflect, Analyze, and Evolve with AI.",
-      landingFeaturesTitle: "Unrivaled Insight Modules",
-      featVisual: "Visual Mirror",
-      featVisualDesc: "Detecting the unseen shifts in your facial micro-expressions.",
-      featVocal: "Vocal Resonance",
-      featVocalDesc: "Frequency-based stress detection from the core of your voice.",
-      featVerbal: "Verbal Patterns",
-      featVerbalDesc: "Deep Meaningful Conversations analysis of your journal to find hidden emotional cues.",
-      sadText: "In moments of shadow...",
-      happyText: "Radiate your light...",
-      celebrateText: "Savor the victory!",
-      sukheMone: "Healthy Mind, Successful Life.",
-      auraName: "Aura",
-      auraStatus: "Connected to your consciousness",
-      auraIntro: "Welcome back. I am Aura, your spiritual guide. What are you holding within today?",
-      oceanSound: "Ocean Waves",
-      gamesTitle: "Brain Balance",
-      gamesSubtitle: "Boost your cognitive skills",
-      memoryGame: "Memory Flow",
-      memoryDesc: "Test your memory and focus limits",
-      focusGame: "Zen Focus",
-      focusDesc: "Master your concentration with precision",
-      reflexesGame: "Cosmic Reflexes",
-      reflexesDesc: "Test your super-sonic reaction speeds",
-      locked: "Locked",
-      unlockReq: "Win previous game 3 times",
-      newGameUnlocked: "Congratulations! New Game Unlocked!",
-      score: "Score",
-      playNow: "Play Now",
-      gameComplete: "Game Over! Great job!",
-      privacyBadge: "Zero-Recording Trust Badge",
-      privacyDisclaimer: "No video is being recorded. Our local AI model only reads pixels to mirror emotions in real-time.",
-      unlockedTitle: "You unlocked The Deep Mirror!",
-      unlockedDesc: "View how your energy levels match your words with a 5-second quick scan.",
-      pricingTitle: "Pricing",
-      successPlan: "Your Success Plan",
-      plan1Title: "The Clarity Foundation",
-      plan1Outcome: "Daily Mood Tracking & Awareness",
-      plan1Features: ["Unlimited Journaling", "Text Analysis", "Basic History", "Daily Affirmations"],
-      plan2Title: "The Emotional Resilience Pro",
-      plan2Outcome: "Real-time Stress Management & Support",
-      plan2Features: ["Everything in Foundation+", "Voice Tone Analysis", "The Deep Mirror (Face)", "Guided Support AI"],
-      plan3Title: "The Peak Performance Suite",
-      plan3Outcome: "Emotional Intelligence & Focus Suite",
-      plan3Features: ["Everything in Pro+", "Advanced Trend Insights", "Brain Balance Games", "Priority Companion Access"],
-      bestValue: "Best Value",
-      privacy: "Privacy",
-      terms: "Terms",
-      support: "Support",
-      copyright: "© 2026 MindMirror AI. Beyond Emotions.",
-      recordingLabel: "RECORDING...",
-      listeningLabel: "LISTENING...",
-      dismiss: "DISMISS",
-    },
-  };
+  // Dynamic sound ambient loop (HTML5 Audio Synthesis)
+  const [isMuted, setIsMuted] = useState(true);
 
-  const currentT = t[lang];
-
-  const translatedLayers = [
+  // Plan Details data
+  const pricingPlans = [
     {
-      id: 'phase-1',
-      title: 'Essential Mirror',
-      subtitle: currentT.faceAnalysis,
-      description: currentT.faceAnalysisDesc,
-      icon: <Camera className="w-5 h-5" />,
-      color: 'bg-sage/10 text-sage'
+      id: 'foundation',
+      title: lang === 'bn' ? "ক্ল্যারিটি ফাউন্ডেশন" : "The Clarity Foundation",
+      outcome: lang === 'bn' ? "দৈনিক মুড ট্র্যাকিং" : "Daily Mood Tracking & Awareness",
+      price: "$0",
+      features: lang === 'bn' ? ["আনলিমিটেড জার্নালিং", "টেক্সট এনালাইসিস", "বেসিক ইতিহাস", "দৈনিক অনুপ্রেরণা"] : ["Unlimited Journaling", "Text Analysis", "Basic History", "Daily Affirmations"],
+      description: lang === 'bn' ? "আপনার মানসিক স্বাস্থ্যের যাত্রার প্রথম ধাপ। একদম ফ্রি।" : "The first step in your mental health journey. Completely free.",
+      color: "border-white/10 bg-white/[0.02]"
     },
     {
-      id: 'phase-2',
-      title: 'Deep Mirror',
-      subtitle: currentT.textJournal,
-      description: currentT.textJournalDesc,
-      icon: <MessageSquare className="w-5 h-5" />,
-      color: 'bg-sage/10 text-sage'
+      id: 'pro',
+      title: lang === 'bn' ? "দ্য ইমোショナル রেজিলিয়েন্স প্রো" : "Emotional Resilience Pro",
+      outcome: lang === 'bn' ? "রিয়েল-টাইম স্ট্রেস ম্যানেজমেন্ট" : "Real-time Stress Management & Scans",
+      price: "$12",
+      featured: true,
+      features: lang === 'bn' ? ["ফাউন্ডেশনের সবকিছু+", "ভয়েস টোন এনালাইসিস", "ডিপ মিরর (ফেস)", "গাইডেড সাপোর্ট এআই"] : ["Everything in Foundation+", "Voice Tone Analysis", "The Deep Mirror (Face)", "Guided Support AI"],
+      description: lang === 'bn' ? "গভীর বিশ্লেষণের মাধ্যমে নিজের আবেগকে নিয়ন্ত্রণ করার জন্য ডিজাইন করা হয়েছে। এতে থাকছে ভয়েস এবং ফেস এনালাইসিস।" : "Designed to master your emotions through deep computer-vision analysis. Includes predictive on-demand checks.",
+      color: "border-sage bg-sage/5"
     },
     {
-      id: 'phase-3',
-      title: 'Holistic Mirror',
-      subtitle: currentT.voiceTone,
-      description: currentT.voiceToneDesc,
-      icon: <Mic className="w-5 h-5" />,
-      color: 'bg-sage/10 text-sage'
+      id: 'suite',
+      title: lang === 'bn' ? "ইমোショナル ইন্টেলিজেন্স স্যুট" : "Emotional Intelligence Suite",
+      outcome: lang === 'bn' ? "ইন্টেলিজেন্স ও ফোকাস স্যুট" : "Emotional Intelligence & Focus Suite",
+      price: "$24",
+      features: lang === 'bn' ? ["প্রো এর সবকিছু+", "অ্যাডভান্সড ট্রেন্ড ইনসাইটস", "ব্রেইন ব্যালান্স গেমস", "প্রায়োরিটি কম্প্যানিয়ন এক্সেস"] : ["Everything in Pro+", "Advanced Trend Insights", "Brain Balance Games", "Priority Companion Access"],
+      description: lang === 'bn' ? "যারা নিজেদের সেরাটা দিতে চান তাদের জন্য। অ্যাডভান্সড ইনসাইটস এবং স্পেশাল গেমস এর মাধ্যমে আপনার পারফরম্যান্স বাড়ান।" : "Ultimate toolkit for biofield analytics, mental stress metrics, priority companion guidance and advanced sensory brain training.",
+      color: "border-purple-500/20 bg-purple-500/5"
     }
   ];
 
-  const exercises = [
-    {
-      id: 'focus-game',
-      title: lang === 'bn' ? 'ফোকাস টার্গেট' : 'Focus Target',
-      duration: '৫ মিনিট',
-      description: 'আপনার মনোযোগ বাড়ানোর একটি ছোট খেলা।',
-      descriptionEn: 'A short game to improve your concentration.',
-      icon: <Zap className="w-6 h-6 text-orange-400" />,
-      color: 'bg-orange-500/10 text-orange-400',
-      steps: [
-        { text: "স্ক্রিনের যেকোনো এক জায়গায় ৫ সেকেন্ড তাকিয়ে থাকুন", textEn: "Stare at one spot for 5 seconds", duration: 5 },
-        { text: "পাপড়ি না ফেলে তাকিয়ে থাকুন", textEn: "Try not to blink", duration: 10 },
-        { text: "গভীর শ্বাস নিন", textEn: "Take a deep breath", duration: 5 }
-      ]
-    },
-    {
-      id: 'box-breathing',
-      title: 'Box Breathing',
-      duration: '৪ মিনিট',
-      description: 'নার্ভ শান্ত করতে এবং ফোকাস বাড়াতে সাহায্য করে।',
-      descriptionEn: 'Helps calm nerves and improve focus.',
-      icon: <Wind className="w-6 h-6" />,
-      color: 'bg-blue-500/10 text-blue-400',
-      steps: [
-        { text: "শ্বাস নিন (৪ সেকেন্ড)", textEn: "Inhale (4s)", duration: 4 },
-        { text: "ধরে রাখুন (৪ সেকেন্ড)", textEn: "Hold (4s)", duration: 4 },
-        { text: "শ্বাস ছাড়ুন (৪ সেকেন্ড)", textEn: "Exhale (4s)", duration: 4 },
-        { text: "ধরে রাখুন (৪ সেকেন্ড)", textEn: "Hold (4s)", duration: 4 }
-      ]
-    },
-    {
-      id: 'shadow-boxing',
-      title: lang === 'bn' ? 'শ্যাড বক্সিং' : 'Shadow Boxing',
-      duration: '৫ মিনিট',
-      description: 'শরীরের বাড়তি এনার্জি বের করে দিন।',
-      descriptionEn: 'Release pent-up energy and stress.',
-      icon: <Zap className="w-6 h-6" />,
-      color: 'bg-orange-500/10 text-orange-400',
-      steps: [
-        { text: "হালকা জাম্প করুন", textEn: "Light bouncing", duration: 10 },
-        { text: "বাম হাত দিয়ে পাঞ্চ (৫ বার)", textEn: "Left hand punch (x5)", duration: 10 },
-        { text: "ডান হাত দিয়ে পাঞ্চ (৫ বার)", textEn: "Right hand punch (x5)", duration: 10 }
-      ]
-    },
-    {
-      id: 'mindful-scan',
-      title: 'Mindful Scan',
-      duration: '৮ মিনিট',
-      description: 'শরীরের প্রতিটি অংশকে অনুভব করে টেনশন রিলিজ করুন।',
-      descriptionEn: 'Release tension by scanning each part of your body.',
-      icon: <Brain className="w-6 h-6" />,
-      color: 'bg-purple-500/10 text-purple-400',
-      steps: [
-        { text: "চোখ বন্ধ করুন", textEn: "Close your eyes", duration: 5 },
-        { text: "পায়ের আঙ্গুলগুলো অনুভব করুন", textEn: "Feel your toes", duration: 10 },
-        { text: "হাত আর ঘাড়ের টেনশন ছাড়ুন", textEn: "Release tension in shoulders", duration: 10 }
-      ]
-    },
-    {
-      id: 'memory-game',
-      title: lang === 'bn' ? 'মেমোরি স্পার্ক' : 'Memory Spark',
-      duration: '৩ মিনিট',
-      description: 'ফোকাস বাড়ানোর জন্য একটি ছোট খেলা।',
-      descriptionEn: 'A small game to sharpen your focus.',
-      icon: <Star className="w-6 h-6" />,
-      color: 'bg-yellow-500/10 text-yellow-400',
-      steps: [
-        { text: "আপনার সামনে ৩টি জিনিসের দিকে তাকান", textEn: "Look at 3 objects in front of you", duration: 10 },
-        { text: "চোখ বন্ধ করে তাদের রঙ মনে করুন", textEn: "Close eyes and recall their colors", duration: 10 }
-      ]
-    },
-    {
-      id: 'gratitude',
-      title: lang === 'bn' ? 'কৃতজ্ঞতা প্রকাশ' : 'Grateful Heart',
-      duration: '৩ মিনিট',
-      description: 'তিনটি জিনিসের কথা ভাবুন যার জন্য আপনি কৃতজ্ঞ।',
-      descriptionEn: 'Think of 3 things you are grateful for.',
-      icon: <Heart className="w-6 h-6" />,
-      color: 'bg-pink-500/10 text-pink-400',
-      steps: [
-        { text: "একটি ছোট সুখের কথা ভাবুন", textEn: "Think of one small joy", duration: 10 },
-        { text: "একজন প্রিয় মানুষের কথা ভাবুন", textEn: "Think of a person you love", duration: 10 }
-      ]
-    },
-    {
-      id: 'grounding',
-      title: lang === 'bn' ? '৫-৪-৩-২-১ গ্রাউন্ডিং' : '5-4-3-2-1 Grounding',
-      duration: '৬ মিনিট',
-      description: 'বর্তমানের সাথে নিজেকে যুক্ত করার জন্য ৫টি ইন্দ্রিয় ব্যবহার করুন।',
-      descriptionEn: 'Connect to the present using your 5 senses.',
-      icon: <ShieldCheck className="w-6 h-6" />,
-      color: 'bg-amber-500/10 text-amber-400',
-      steps: [
-        { text: "৫টি জিনিস দেখুন যা আপনার সামনে আছে", textEn: "See 5 things around you", duration: 15 },
-        { text: "৪টি জিনিস স্পর্শ করুন", textEn: "Touch 4 things", duration: 15 }
-      ]
-    }
-  ];
-
-  const SESSION_DURATION = 60 * 60 * 1000;
-  const COOLDOWN_DURATION = 3 * 60 * 60 * 1000;
-
-  const startCamera = async (withAudio = false) => {
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'user' },
-        audio: withAudio 
-      });
-      setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
-    } catch (err) {
-      console.error("Error accessing camera:", err);
-      setShowNotification({ message: currentT.cameraError, type: 'error' });
-      setIsScanning(false);
-    }
-  };
-
-  const startTranscription = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = lang === 'bn' ? 'bn-BD' : 'en-US';
-      
-      recognition.onresult = (event: any) => {
-        let finalTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          }
-        }
-        if (finalTranscript) {
-          setTranscription(prev => prev + ' ' + finalTranscript);
-        }
-      };
-      recognition.start();
-      recognitionRef.current = recognition;
-    }
-  };
-
-  const stopTranscription = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-    }
-  };
-
-  const startRecording = () => {
-    setIsRecording(true);
-    setRecordingTime(0);
-    setTranscription('');
-    startTranscription();
-    recordingIntervalRef.current = setInterval(() => {
-      setRecordingTime(prev => {
-        if (prev >= 120) {
-          stopRecording();
-          return 120;
-        }
-        return prev + 1;
-      });
-    }, 1000);
-  };
-
-  const stopRecording = () => {
-    setIsRecording(false);
-    stopTranscription();
-    if (recordingIntervalRef.current) {
-      clearInterval(recordingIntervalRef.current);
-      recordingIntervalRef.current = null;
-    }
-    setScanStep('analyzing');
-    analyzeResult();
-  };
-
-  const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-    }
-    stopTranscription();
-    if (recordingIntervalRef.current) {
-      clearInterval(recordingIntervalRef.current);
-      recordingIntervalRef.current = null;
-    }
-  };
-
-  const capturePhoto = () => {
-    if (scanMode === 'video') {
-      if (isRecording) stopRecording();
-      else startRecording();
-    } else {
-      setScanStep('analyzing');
-      analyzeResult();
-    }
-  };
-
-  const speakText = (text: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = lang === 'bn' ? 'bn-IN' : 'en-US'; // Use bn-IN for better Bengali support in most browsers
-      utterance.rate = 0.9;
-      utterance.pitch = 1.1;
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
-      utterance.onerror = () => setIsSpeaking(false);
-      window.speechSynthesis.speak(utterance);
-    }
-  };
-
-  const stopSpeaking = () => {
-    window.speechSynthesis.cancel();
-    setIsSpeaking(false);
-  };
-
-  const analyzeResult = async (customText?: string) => {
-    const input = customText || journalText || transcription || "User shared their feelings through visual/video cues.";
-    try {
-      const response = await fetch(`${window.location.origin}/api/analyze`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: input, type: analysisType, lang: lang })
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Server responded with ${response.status}`);
-      }
-      const data = await response.json();
-      
-      // Hybrid Engine Logic: Update analysis outputs
-      const newOutputs = { ...analysisOutputs, [analysisType]: data.reflection };
-      setAnalysisOutputs(newOutputs);
-
-      // Simple weighted aggregation if multiple inputs exist
-      let finalReflection = data.reflection;
-      if (Object.keys(newOutputs).length > 1) {
-        // In a real scenario, we'd send all context to AI. 
-        // Here we simulate the weighting by prioritizing text (50%)
-        finalReflection = (lang === 'bn' ? "হাইব্রিড এনালাইসিস রেজাল্ট: " : "Hybrid Analysis Result: ") + (newOutputs.text || newOutputs.voice || newOutputs.face);
-      }
-
-      setAiReflection(finalReflection || "আপনার চোখে কিছুটা ক্লান্তি দেখা যাচ্ছে, কিন্তু ফোকাসটা দারুণ!");
-      setScanStep('result');
-      stopCamera();
-      if (autoSpeak) speakText(finalReflection || (lang === 'bn' ? "আপনার চোখে কিছুটা ক্লান্তি দেখা যাচ্ছে, কিন্তু ফোকাসটা দারুণ!" : "I see a bit of tiredness in your eyes, but your focus is amazing!"));
-    } catch (error) {
-      console.error("Analysis error:", error);
-      setShowNotification({ message: error instanceof Error ? error.message : "Analysis failed", type: 'error' });
-      setAiReflection("আপনার চোখে কিছুটা ক্লান্তি দেখা যাচ্ছে, কিন্তু ফোকাসটা দারুণ!");
-      setScanStep('result');
-      stopCamera();
-    }
-  };
-
+  // Auth & Initial load sync
   useEffect(() => {
-    if (!userData) return;
-    const timer = setInterval(() => {
-      const now = new Date().getTime();
-      if (userData.sessionCooldownUntil) {
-        let cooldownEnd = userData.sessionCooldownUntil.toDate ? userData.sessionCooldownUntil.toDate().getTime() : new Date(userData.sessionCooldownUntil).getTime();
-        if (now < cooldownEnd) {
-          const diff = cooldownEnd - now;
-          const h = Math.floor(diff / (1000 * 3600));
-          const m = Math.floor((diff % (1000 * 3600)) / (1000 * 60));
-          const s = Math.floor((diff % (1000 * 60)) / 1000);
-          setSessionTimeLeft(`${h}h ${m}m ${s}s`);
-          setOnCooldown(true);
-          return;
-        }
-      }
-      if (userData.sessionStartedAt) {
-        let sessionStart = userData.sessionStartedAt.toDate ? userData.sessionStartedAt.toDate().getTime() : new Date(userData.sessionStartedAt).getTime();
-        const sessionEnd = sessionStart + SESSION_DURATION;
-        if (now < sessionEnd) {
-          const diff = sessionEnd - now;
-          const m = Math.floor(diff / (1000 * 60));
-          const s = Math.floor((diff % (1000 * 60)) / 1000);
-          setSessionTimeLeft(`${m}m ${s}s`);
-          setOnCooldown(false);
-        } else {
-          handleSessionEnd();
+    // Local persistence fallback
+    const savedPoints = localStorage.getItem('mm_points');
+    const savedStreak = localStorage.getItem('mm_streak');
+    const savedBadges = localStorage.getItem('mm_badges');
+    const savedHistory = localStorage.getItem('mm_journal_history');
+    const savedG1 = localStorage.getItem('mm_g1plays');
+    const savedG2 = localStorage.getItem('mm_g2plays');
+    const savedG3 = localStorage.getItem('mm_g3plays');
+
+    if (savedPoints) setPoints(parseInt(savedPoints));
+    if (savedStreak) setStreak(parseInt(savedStreak));
+    if (savedBadges) setBadges(JSON.parse(savedBadges));
+    if (savedHistory) setJournalHistory(JSON.parse(savedHistory));
+    if (savedG1) setGame1Plays(parseInt(savedG1));
+    if (savedG2) setGame2Plays(parseInt(savedG2));
+    if (savedG3) setGame3Plays(parseInt(savedG3));
+
+    const unsubscribe = onAuthStateChanged(auth, async (gUser) => {
+      if (gUser) {
+        setUser(gUser);
+        // Load data from Firebase
+        const userDocRef = doc(db, 'users', gUser.uid);
+        try {
+          const snap = await getDoc(userDocRef);
+          if (snap.exists()) {
+            const data = snap.data();
+            setPoints(data.points || 350);
+            setStreak(data.streak || 5);
+            setBadges(data.badges || ["Clarity Initiate"]);
+            setGame1Plays(data.game1Plays || 0);
+            setGame2Plays(data.game2Plays || 0);
+            setGame3Plays(data.game3Plays || 0);
+          } else {
+            // Save initial profile
+            await setDoc(userDocRef, {
+              uid: gUser.uid,
+              displayName: gUser.displayName,
+              email: gUser.email,
+              photoURL: gUser.photoURL,
+              points: 350,
+              streak: 5,
+              badges: ["Clarity Initiate"],
+              game1Plays: 0,
+              game2Plays: 0,
+              game3Plays: 0,
+              createdAt: new Date().toISOString()
+            });
+          }
+
+          // Fetch database checkins
+          const checkinsRef = collection(db, 'users', gUser.uid, 'checkins');
+          const checkinsSnap = await getDocs(checkinsRef);
+          const rawHist: any[] = [];
+          checkinsSnap.forEach((d) => {
+            rawHist.push({ id: d.id, ...d.data() });
+          });
+          if (rawHist.length > 0) {
+            setJournalHistory(rawHist);
+          }
+        } catch (e) {
+          console.error("Firestore Loading error, using local fallback", e);
         }
       } else {
-        setSessionTimeLeft(null);
-        setOnCooldown(false);
+        setUser(null);
       }
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [userData]);
+      setLoadingUser(false);
+    });
 
-  const handleSessionEnd = async () => {
-    if (!user || !userData) return;
-    const now = new Date().getTime();
-    try {
-      const userRef = doc(db, 'users', user.uid);
-      const cooldownEnd = new Date(now + COOLDOWN_DURATION);
-      await updateDoc(userRef, { sessionCooldownUntil: cooldownEnd, sessionStartedAt: null });
-      setUserData(prev => prev ? { ...prev, sessionCooldownUntil: { toDate: () => cooldownEnd }, sessionStartedAt: null } : null);
-      setShowNotification({ message: currentT.sessionEnd, type: 'error' });
-    } catch (error) { console.error(error); }
-  };
+    return () => unsubscribe();
+  }, []);
 
-  const startSession = async () => {
-    if (!user || !userData || onCooldown) return;
-    try {
-      const userRef = doc(db, 'users', user.uid);
-      const now = new Date();
-      await updateDoc(userRef, { sessionStartedAt: serverTimestamp(), sessionCooldownUntil: null });
-      setUserData(prev => prev ? { ...prev, sessionStartedAt: { toDate: () => now }, sessionCooldownUntil: null } : null);
-      setShowNotification({ message: currentT.sessionStarted, type: 'success' });
-    } catch (error) { handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`); }
-  };
+  // Sync state with localstorage on updates
+  useEffect(() => {
+    localStorage.setItem('mm_points', points.toString());
+    localStorage.setItem('mm_streak', streak.toString());
+    localStorage.setItem('mm_badges', JSON.stringify(badges));
+    localStorage.setItem('mm_journal_history', JSON.stringify(journalHistory));
+    localStorage.setItem('mm_g1plays', game1Plays.toString());
+    localStorage.setItem('mm_g2plays', game2Plays.toString());
+    localStorage.setItem('mm_g3plays', game3Plays.toString());
 
-  const fetchHistory = async (uid: string) => {
-    try {
-      const q = query(collection(db, 'users', uid, 'checkins'), orderBy('timestamp', 'desc'), limit(20));
-      const querySnapshot = await getDocs(q);
-      const records: CheckInRecord[] = [];
-      querySnapshot.forEach((doc) => records.push({ id: doc.id, ...doc.data() } as CheckInRecord));
-      setHistory(records);
-    } catch (error) { console.error(error); }
-  };
+    // Unlock Reflexes if points >= 500
+    if (points >= 500 && !gameUnlocked) {
+      setGameUnlocked(true);
+      triggerNotification(currentT.newGameUnlocked, 'success');
+    }
+  }, [points, streak, badges, journalHistory, game1Plays, game2Plays, game3Plays]);
 
-  const deleteHistoryRecord = async (recordId: string) => {
-    if (!user) return;
+  // Coach speak synthesis
+  const speakNow = (text: string) => {
+    if (!autoSpeak) return;
     try {
-      await deleteDoc(doc(db, 'users', user.uid, 'checkins', recordId));
-      setHistory(prev => prev.filter(r => r.id !== recordId));
-      setShowNotification({ message: currentT.deleteSuccess, type: 'success' });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `users/${user.uid}/checkins/${recordId}`);
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang === 'bn' ? 'bn-BD' : 'en-US';
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => setIsSpeaking(false);
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  const generateSupportMessage = async (type: string) => {
-    setSelectedSupportType(type);
-    setGeneratingSupport(true);
-    try {
-      const response = await fetch(`${window.location.origin}/api/support`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reflection: aiReflection, supportType: type, lang: lang })
-      });
-      if (!response.ok) throw new Error("Failed to generate support message");
-      const data = await response.json();
-      setSupportMessage(data.message);
-    } catch (error) {
-      console.error("Support generation error:", error);
-      setSupportMessage(lang === 'bn' ? "আপনার ভেতরের আলো আপনাকে সঠিক পথে নিয়ে যাবে।" : "An internal reflection helps illuminate your path forward. Keep moving with grace.");
-    } finally {
-      setGeneratingSupport(false);
-    }
+  const triggerNotification = (message: string, type: 'success' | 'error') => {
+    setShowNotification({ message, type });
+    setTimeout(() => {
+      setShowNotification(null);
+    }, 4000);
   };
 
-  const handleCheckIn = async () => {
-    if (!user || !userData || isCollecting) return;
-    setIsCollecting(true);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    let newStreak = 1;
-    if (userData.lastCheckIn) {
-      let lastDate = userData.lastCheckIn.toDate ? userData.lastCheckIn.toDate() : new Date(userData.lastCheckIn);
-      lastDate.setHours(0, 0, 0, 0);
-      const diffDays = Math.floor((today.getTime() - lastDate.getTime()) / (1000 * 3600 * 24));
-      if (diffDays === 1) newStreak = (userData.streak || 0) + 1;
-      else if (diffDays === 0) newStreak = (userData.streak || 1);
-    }
-    try {
-      const userRef = doc(db, 'users', user.uid);
-      await addDoc(collection(db, 'users', user.uid, 'checkins'), { reflection: aiReflection, timestamp: serverTimestamp(), type: analysisType });
-      await updateDoc(userRef, { points: increment(50), streak: newStreak, lastCheckIn: serverTimestamp() });
-      setUserData(prev => prev ? { ...prev, points: (prev.points || 0) + 50, streak: newStreak, lastCheckIn: { toDate: () => today } } : null);
-      fetchHistory(user.uid);
-      setShowNotification({ message: currentT.pointsSuccess, type: 'success' });
-      setIsScanning(false);
-    } catch (error) { handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`); }
-    finally { setIsCollecting(false); }
-  };
-
+  // Breathing cadence
   useEffect(() => {
-    const affirmations = lang === 'bn' ? [
-      "আমি আজ শান্ত এবং ধীরস্থির থাকব।",
-      "আমার শক্তি আসে আমার ভেতর থেকে।",
-      "প্রতিটি শ্বাস আমাকে নতুন করে গড়ে তুলে।",
-      "আমি আমার আবেগকে নিয়ন্ত্রণ করতে পারি।",
-      "আজকের দিনটি নতুন সম্ভাবনার।",
-      "আমি নিজের প্রতি সদয় এবং আজ আমি জিতবই।",
-      "আমার মন একটি শান্ত সমুদ্রের মতো গভীর।"
-    ] : [
-      "I am calm and at peace today.",
-      "My strength comes from within.",
-      "Every breath renews me.",
-      "I am in control of my emotions.",
-      "Today is a new possibility.",
-      "I am kind to myself and I will succeed.",
-      "My mind is as deep and calm as the ocean."
-    ];
-    setDailyAffirmation(affirmations[Math.floor(Math.random() * affirmations.length)]);
-  }, [lang]);
-
-  useEffect(() => {
-    if (!activeExercise) return;
-    setExerciseStep(0);
-    setExerciseTimeLeft(activeExercise.steps[0].duration);
-  }, [activeExercise]);
-
-  useEffect(() => {
-    if (!activeExercise || exerciseTimeLeft <= 0) return;
+    const currentExec = guidedExercises[activeExerciseIdx];
     const timer = setInterval(() => {
-      setExerciseTimeLeft(prev => {
+      setBreathingSecs((prev) => {
         if (prev <= 1) {
-          if (exerciseStep < activeExercise.steps.length - 1) {
-            setExerciseStep(s => s + 1);
-            return activeExercise.steps[exerciseStep + 1].duration;
+          if (breathingStep === 'inhale') {
+            if (currentExec.hold > 0) {
+              setBreathingStep('hold');
+              return currentExec.hold;
+            } else {
+              setBreathingStep('exhale');
+              return currentExec.exhale;
+            }
+          } else if (breathingStep === 'hold') {
+            setBreathingStep('exhale');
+            return currentExec.exhale;
+          } else if (breathingStep === 'exhale') {
+            if (currentExec.rest > 0) {
+              setBreathingStep('rest');
+              return currentExec.rest;
+            } else {
+              setBreathingStep('inhale');
+              return currentExec.inhale;
+            }
           } else {
-            return 0; // Completed
+            // from rest
+            setBreathingStep('inhale');
+            return currentExec.inhale;
           }
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [activeExercise, exerciseTimeLeft, exerciseStep]);
+  }, [breathingStep, activeExerciseIdx]);
 
-  const startMemoryGame = () => {
-    const symbols = ['🧘', '🌊', '🌱', '🌙', '🧠', '✨', '🧘', '🌊', '🌱', '🌙', '🧠', '✨'];
-    const shuffled = symbols.sort(() => Math.random() - 0.5).map((s, i) => ({
-      id: i,
-      symbol: s,
-      isFlipped: false,
-      isMatched: false
-    }));
-    setMemoryCards(shuffled);
-    setFlippedIndices([]);
-    setGameScore(0);
-    setActiveGame('memory');
+  // Reflex timing
+  useEffect(() => {
+    let interval: any;
+    if (isPlayingReflex && reflexTimeLeft > 0) {
+      interval = setInterval(() => {
+        setReflexTimeLeft(t => t - 1);
+      }, 1000);
+    } else if (isPlayingReflex && reflexTimeLeft === 0) {
+      setIsPlayingReflex(false);
+      const bonus = reflexScore * 10;
+      const award = bonus + 150;
+      setPoints(p => p + award);
+      
+      const newG1Plays = game1Plays + 1;
+      setGame1Plays(newG1Plays);
+      localStorage.setItem('mm_g1plays', newG1Plays.toString());
+
+      triggerNotification(`${currentT.gameComplete}: +${award} MW! (${newG1Plays}/3 plays)`, 'success');
+
+      if (user) {
+        const userDocRef = doc(db, 'users', user.uid);
+        updateDoc(userDocRef, {
+          points: points + award,
+          game1Plays: newG1Plays
+        }).catch(e => {});
+      }
+    }
+    return () => clearInterval(interval);
+  }, [isPlayingReflex, reflexTimeLeft, reflexScore, game1Plays, user, points]);
+
+  // Game 2 (Aura Stroop Harmony Matching) Round Generator
+  const generateStroopRound = () => {
+    const list = ['SAGE', 'PURPLE', 'BLUE', 'ORANGE'];
+    const word = list[Math.floor(Math.random() * list.length)] as any;
+    const color = list[Math.floor(Math.random() * list.length)] as any;
+    setStroopWord(word);
+    setStroopColor(color);
   };
 
-  const flipCard = (index: number) => {
-    if (flippedIndices.length === 2 || memoryCards[index].isFlipped || memoryCards[index].isMatched) return;
-    
-    const newCards = [...memoryCards];
-    newCards[index].isFlipped = true;
-    setMemoryCards(newCards);
-    
-    const newFlipped = [...flippedIndices, index];
-    setFlippedIndices(newFlipped);
-    
-    if (newFlipped.length === 2) {
-      const [first, second] = newFlipped;
-      if (newCards[first].symbol === newCards[second].symbol) {
-        newCards[first].isMatched = true;
-        newCards[second].isMatched = true;
-        setMemoryCards(newCards);
-        setFlippedIndices([]);
-        setGameScore(s => s + 1);
-        if (newCards.every(c => c.isMatched)) {
-          handleGameCompletion();
-        }
-      } else {
-        setTimeout(() => {
-          const resetCards = [...memoryCards];
-          if (resetCards[first]) resetCards[first].isFlipped = false;
-          if (resetCards[second]) resetCards[second].isFlipped = false;
-          setMemoryCards(resetCards);
-          setFlippedIndices([]);
-        }, 1000);
+  const startStroopGame = () => {
+    setGame2Score(0);
+    setGame2TimeLeft(15);
+    setIsPlayingGame2(true);
+    generateStroopRound();
+  };
+
+  // Game 2 Timing
+  useEffect(() => {
+    let interval: any;
+    if (isPlayingGame2 && game2TimeLeft > 0) {
+      interval = setInterval(() => {
+        setGame2TimeLeft(t => t - 1);
+      }, 1000);
+    } else if (isPlayingGame2 && game2TimeLeft === 0) {
+      setIsPlayingGame2(false);
+      const bonus = game2Score * 15;
+      const award = bonus + 150;
+      setPoints(p => p + award);
+      
+      const newG2Plays = game2Plays + 1;
+      setGame2Plays(newG2Plays);
+      localStorage.setItem('mm_g2plays', newG2Plays.toString());
+
+      triggerNotification(
+        lang === 'bn' 
+          ? `অরা হারমনি সম্পন্ন! অর্জিত: +${award} MW (${newG2Plays}/৩ সমাপ্ত)` 
+          : `Aura Harmony complete! Received: +${award} MW (${newG2Plays}/3 plays)`, 
+        'success'
+      );
+
+      if (user) {
+        const userDocRef = doc(db, 'users', user.uid);
+        updateDoc(userDocRef, {
+          points: points + award,
+          game2Plays: newG2Plays
+        }).catch(e => {});
       }
+    }
+    return () => clearInterval(interval);
+  }, [isPlayingGame2, game2TimeLeft, game2Score, game2Plays, user, points, lang]);
+
+  // Game 3 (Cosmic Path Sequence Memory)
+  const startMemoryGameLevel = () => {
+    setIsPlayingGame3(true);
+    setGame3Score(0);
+    const nextSeq = [Math.floor(Math.random() * 4) + 1];
+    setMemorySequence(nextSeq);
+    setUserAttempt([]);
+    triggerSequenceFlash(nextSeq);
+  };
+
+  const triggerSequenceFlash = (seq: number[]) => {
+    setSequenceStep('show');
+    let idx = 0;
+    const interval = setInterval(() => {
+      if (idx >= seq.length) {
+        clearInterval(interval);
+        setActiveSequenceFlash(null);
+        setSequenceStep('input');
+        return;
+      }
+      setActiveSequenceFlash(seq[idx]);
+      setTimeout(() => {
+        setActiveSequenceFlash(null);
+      }, 500);
+      idx++;
+    }, 850);
+  };
+
+  const onMemoryNodeClick = (nodeVal: number) => {
+    if (sequenceStep !== 'input' || !isPlayingGame3) return;
+    
+    const nextAttempt = [...userAttempt, nodeVal];
+    setUserAttempt(nextAttempt);
+
+    const activeIndex = nextAttempt.length - 1;
+    if (nodeVal !== memorySequence[activeIndex]) {
+      // Failed! Game over
+      setSequenceStep('failed');
+      setIsPlayingGame3(false);
+      const award = game3Score * 50 + 150;
+      setPoints(curr => curr + award);
+      
+      const newG3Plays = game3Plays + 1;
+      setGame3Plays(newG3Plays);
+      localStorage.setItem('mm_g3plays', newG3Plays.toString());
+      
+      triggerNotification(
+        lang === 'bn'
+          ? `ভুল প্রতীক! সিকোয়েন্স অফলাইন। পেয়েছেন: +${award} MW (${newG3Plays}/৩ সমাপ্ত)`
+          : `Sequence mismatch! Path offline. Received: +${award} MW (${newG3Plays}/3 plays)`,
+        'error'
+      );
+
+      if (autoSpeak) {
+        speakNow(lang === 'bn' ? "ভুল সংযোগ, আপনার কসমিক পাথ ভারসাম্য বজায় রাখুন।" : "Sequence offline. Recalibrate focus sanctuary.");
+      }
+
+      if (user) {
+        const userDocRef = doc(db, 'users', user.uid);
+        updateDoc(userDocRef, {
+          points: points + award,
+          game3Plays: newG3Plays
+        }).catch(e => {});
+      }
+      return;
+    }
+
+    // Check if user completed the current level sequence
+    if (nextAttempt.length === memorySequence.length) {
+      const nextScore = game3Score + 1;
+      setGame3Score(nextScore);
+      triggerNotification(lang === 'bn' ? `লেভেল ${nextScore} সফল!` : `Path Level ${nextScore} Sync completed!`, 'success');
+
+      // Add check point check for completed sequence to count as a play even if they want to stop or play long
+      if (nextScore === 3) {
+        const newG3Plays = game3Plays + 1;
+        setGame3Plays(newG3Plays);
+        localStorage.setItem('mm_g3plays', newG3Plays.toString());
+        triggerNotification(lang === 'bn' ? "অভিনন্দন! আপনি ৩ লেভেল পার করেছেন এবং কসমিক মাস্টার শিরোপার ১টি ধাপ অর্জন করেছেন।" : "Congratulations! Level 3 achieved, score tracked!", 'success');
+        if (user) {
+          const userDocRef = doc(db, 'users', user.uid);
+          updateDoc(userDocRef, { game3Plays: newG3Plays }).catch(() => {});
+        }
+      }
+
+      setTimeout(() => {
+        const nextSeq = [...memorySequence, Math.floor(Math.random() * 4) + 1];
+        setMemorySequence(nextSeq);
+        setUserAttempt([]);
+        triggerSequenceFlash(nextSeq);
+      }, 1000);
     }
   };
 
-  const handleGameCompletion = async () => {
-    if (user && userData) {
-      const gId = activeGame!;
-      const currentWins = (userData.gameProgress?.[gId] || 0) + 1;
-      const newProgress = {
-        ...(userData.gameProgress || {}),
-        [gId]: currentWins
-      };
-      
-      const newPoints = (userData.points || 0) + (gId === 'focus' ? 30 : 20);
-      const updatedData = { ...userData, points: newPoints, gameProgress: newProgress };
-      setUserData(updatedData);
+  // Prompt game coordinate move
+  const moveReflexTarget = () => {
+    const top = Math.floor(Math.random() * 70 + 15) + '%';
+    const left = Math.floor(Math.random() * 75 + 10) + '%';
+    setTargetPos({ top, left });
+  };
 
-      // Check for unlock
-      if (currentWins === 3) {
-        setShowNotification({ message: (currentT as any).newGameUnlocked, type: 'success' });
-      } else {
-        setShowNotification({ message: currentT.gameComplete, type: 'success' });
-      }
-      
+  const onTargetHit = () => {
+    setReflexScore(s => s + 1);
+    moveReflexTarget();
+  };
+
+  // Trigger Photo click capture
+  const triggerPhotoClick = async () => {
+    setCameraClickFlash(true);
+    triggerNotification(lang === 'bn' ? "ছবি তোলা হচ্ছে..." : "Capturing photo snap...", 'success');
+    
+    // Auto turn stream on if not already active to show lens aperture animation
+    if (!scannerActive) {
       try {
-        await updateDoc(doc(db, 'users', user.uid), {
-          points: newPoints,
-          gameProgress: newProgress
-        });
-      } catch (err) {
-        console.error("Error updating game progress:", err);
+        const liveStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        streamRef.current = liveStream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = liveStream;
+        }
+        setScannerActive(true);
+      } catch (e) {
+        console.warn(e);
       }
-    } else {
-      setShowNotification({ message: currentT.gameComplete, type: 'success' });
     }
 
     setTimeout(() => {
-      setActiveGame(null);
-    }, 2000);
+      setCameraClickFlash(false);
+      setScanStep('analyzing');
+      submitAnalysis('face');
+    }, 450);
   };
 
-  const startFocusGame = () => {
-    setFocusHits(0);
-    setGameScore(0);
-    spawnTarget();
-    setActiveGame('focus');
-  };
+  // Trigger Video Recording session
+  const triggerVideoRecord = async () => {
+    if (cameraRecording) return;
+    setCameraRecording(true);
+    setCameraRecordingSecs(120);
+    triggerNotification(lang === 'bn' ? "২ মিনিটের ভিডিও রেকর্ড শুরু হচ্ছে..." : "Starting 2-minute video recording...", 'success');
 
-  const spawnTarget = () => {
-    setFocusTarget({
-      x: Math.random() * 80 + 10,
-      y: Math.random() * 80 + 10,
-      id: Math.random()
-    });
-  };
-
-  const handleFocusHit = () => {
-    setFocusHits(prev => {
-      const next = prev + 1;
-      setGameScore(next * 10);
-      if (next >= 10) {
-        handleGameCompletion();
-        setFocusTarget(null);
-      } else {
-        spawnTarget();
+    // Auto turn stream on if not already active
+    if (!scannerActive) {
+      try {
+        const liveStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        streamRef.current = liveStream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = liveStream;
+        }
+        setScannerActive(true);
+      } catch (e) {
+        console.warn(e);
       }
-      return next;
-    });
+    }
   };
 
-  const startExercise = (exercise: any) => {
-    setActiveExercise(exercise);
-  };
+  // Camera checkin mechanics
+  const startCameraScan = async () => {
+    setScannerActive(true);
+    setScanStep('close');
+    setScanCountdown(5);
+    setScanReflection("");
+    triggerNotification(currentT.sessionStarted, 'success');
 
-  const handleLogin = async () => {
-    setIsLoggingIn(true);
     try {
-      await signInWithGoogle();
-    } catch (error: any) {
-      console.error("Login caught in handleLogin:", error);
-      let errorMsg = lang === 'bn' ? "লগইন করতে সমস্যা হয়েছে।" : "Login failed. Please try again.";
-      
-      if (error.code === 'auth/unauthorized-domain') {
-        errorMsg = lang === 'bn' 
-          ? "এই ডোমেইনটি অথোরাইজড নয়। দয়া করে ফায়ারবেস কনসোলে ডোমেইনটি এড করুন।" 
-          : "Domain not authorized. Please add this URL to Authorized Domains in Firebase Console.";
-      } else if (error.code === 'auth/popup-blocked') {
-        errorMsg = lang === 'bn' 
-          ? "পপ-আপ ব্লক করা হয়েছে। দয়া করে এলাও করুন।" 
-          : "Popup blocked by browser. Please allow popups for this site.";
+      const liveStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+      streamRef.current = liveStream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = liveStream;
       }
-      
-      setShowNotification({ message: errorMsg, type: 'error' });
-    } finally {
-      setIsLoggingIn(false);
+    } catch (e) {
+      console.warn("Camera streaming is locked or simulator frame active:", e);
     }
   };
 
-  const triggerScan = (type: 'face' | 'text' | 'voice') => {
-    if (!userData?.sessionStartedAt) {
-      setShowNotification({ message: currentT.sessionWarning, type: 'error' });
-      return;
+  // Scan simulation countdown timers
+  useEffect(() => {
+    let interval: any;
+    if (scannerActive && scanCountdown > 0) {
+      interval = setInterval(() => {
+        setScanCountdown(c => c - 1);
+      }, 1000);
+    } else if (scannerActive && scanCountdown === 0) {
+      if (scanStep === 'close') {
+        setScanStep('open');
+        setScanCountdown(10);
+      } else if (scanStep === 'open') {
+        setScanStep('analyzing');
+        submitAnalysis('face');
+      }
     }
-    setAnalysisType(type);
-    setScanStep(type === 'face' ? 'camera' : 'analyzing');
-    setIsScanning(true);
+    return () => clearInterval(interval);
+  }, [scannerActive, scanCountdown, scanStep]);
+
+  // Voice Recording simulation timer
+  useEffect(() => {
+    let timer: any;
+    if (isRecordingVoice) {
+      timer = setInterval(() => {
+        setVoiceSecs((prev) => {
+          if (prev >= 120) {
+            clearInterval(timer);
+            setIsRecordingVoice(false);
+            setScanStep('analyzing');
+            submitAnalysis('voice');
+            return 0;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [isRecordingVoice]);
+
+  // Video recording simulation timer
+  useEffect(() => {
+    let timer: any;
+    if (cameraRecording) {
+      timer = setInterval(() => {
+        setCameraRecordingSecs((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setCameraRecording(false);
+            setScanStep('analyzing');
+            submitAnalysis('face');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [cameraRecording]);
+
+  // Automated live wellness mirror camera stream activator
+  useEffect(() => {
+    let active = true;
+    let localStream: MediaStream | null = null;
+
+    const initCam = async () => {
+      if (activeTab === 'mirror' && scannerMode === 'camera' && !cameraRecording && scanStep !== 'analyzing' && scanStep !== 'done') {
+        try {
+          const liveStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+          if (!active) {
+            liveStream.getTracks().forEach(track => track.stop());
+            return;
+          }
+          streamRef.current = liveStream;
+          localStream = liveStream;
+          setScannerActive(true);
+          if (videoRef.current) {
+            videoRef.current.srcObject = liveStream;
+          }
+        } catch (e) {
+          console.warn("Auto-initializing camera stream failed or blocked:", e);
+        }
+      }
+    };
+
+    initCam();
+
+    return () => {
+      active = false;
+      // Shutdown stream when changing modes/tabs so we aren't hogging the webcam
+      if (!cameraRecording && scanStep !== 'analyzing') {
+        if (localStream) {
+          localStream.getTracks().forEach(track => track.stop());
+        }
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
+        setScannerActive(false);
+      }
+    };
+  }, [activeTab, scannerMode, cameraRecording, scanStep]);
+
+  const submitAnalysis = async (type: 'face' | 'voice' | 'text', customInput?: string) => {
+    setScannerLoading(true);
+    let content = "";
     if (type === 'face') {
-      startCamera(false);
+      content = `A simulated frame of aura matching facial geometry pixels: high dynamic range, warm spiritual aura reflection.`;
     } else if (type === 'voice') {
-      // For voice, we don't necessarily need camera, but we can start audio context if needed
-      // Actually startRecording handles it
+      content = `A simulated vocal audio spectrum matching vocal pitch frequencies, heart rhythm coherence level, and spiritual aura: peaceful voice vibration.`;
+    } else {
+      content = customInput || textScanInput || journalInput || "I am seeking a calm spiritual alignment.";
     }
-  };
 
-  const askCoach = async () => {
-    if (!coachInput.trim() || isChatting) return;
-    const userMsg = coachInput;
-    setChatMessages(prev => [...prev, { role: 'user', text: userMsg }]);
-    setCoachInput('');
-    setIsChatting(true);
+    // Add fluctuating dynamic spiritual parameters to force unique responses from Gemini even if same mood is selected
+    const dynamicChakras = ["Root Grounding", "Sacral Flow", "Solar Plexus Will", "Heart Balance", "Throat Expression", "Third-Eye Insight", "Crown Wisdom"];
+    const activeChakra = dynamicChakras[Math.floor(Math.random() * dynamicChakras.length)];
+    const randomFreq = (Math.random() * 200 + 432).toFixed(3);
+    const randomCoherence = (Math.random() * 25 + 75).toFixed(1);
+    const uniqueHash = Math.random().toString(36).substring(2, 8);
+    
+    // Save state for telemetry coordinates
+    setTelemetryChakra(activeChakra);
+    setTelemetryFreq(randomFreq);
+    setTelemetryCoherence(randomCoherence);
+    setTelemetrySignature(uniqueHash.toUpperCase());
+    
+    content += `\n\n[Celestial Resonance Matrix Seed: Chakra Focal=${activeChakra}, Freq=${randomFreq}Hz, Coherence=${randomCoherence}%, RandomSignature=${uniqueHash}. CRITICAL DIRECTIVE: Use this seed to make the response completely custom, creative, poetic, and non-repetitive. Do NOT default to same opening lines.]`;
 
     try {
-      const response = await fetch(`${window.location.origin}/api/analyze`, {
+      const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          content: userMsg, 
-          type: 'text', 
-          lang: lang,
-          context: 'chat'
-        })
+        body: JSON.stringify({ content, type, lang, mood: scanMood })
       });
-      if (!response.ok) throw new Error("Coach failed to respond");
       const data = await response.json();
-      setChatMessages(prev => [...prev, { role: 'assistant', text: data.reflection }]);
-      if (autoSpeak) speakText(data.reflection);
-    } catch (error) {
-      console.error(error);
-      setChatMessages(prev => [...prev, { role: 'assistant', text: lang === 'bn' ? "আমি দুঃখিত, আমি এই মুহূর্তে কানেক্ট করতে পারছি না।" : "I'm sorry, I'm unable to connect right now." }]);
+      
+      if (data.reflection) {
+        // Prepare diagnostic modal ceremony instead of immediately showing results
+        setTempReflection(data.reflection);
+        setPopupSubStep('choice');
+        setTtsOption(null);
+        setSelectedMysteryCard(null);
+        setShowDiagnosticPopup(true);
+
+        // Keep local app reflection empty until the modal unlocks it (or let background update)
+        setScanReflection(""); 
+        setScanStep('done');
+
+        // Record history
+        const newEntry = {
+          id: Math.random().toString(36).substring(7),
+          timestamp: new Date().toISOString(),
+          reflection: data.reflection,
+          type,
+          score: type === 'face' ? 85 : type === 'voice' ? 80 : 75
+        };
+
+        setJournalHistory(prev => [newEntry, ...prev]);
+
+        // Save entry in Firestore if user authed
+        if (user) {
+          const checkinsColl = collection(db, 'users', user.uid, 'checkins');
+          await addDoc(checkinsColl, {
+            timestamp: new Date().toISOString(),
+            reflection: data.reflection,
+            type,
+            score: newEntry.score
+          });
+
+          // Increase stats firebase
+          const userDocRef = doc(db, 'users', user.uid);
+          await updateDoc(userDocRef, {
+            points: points + 100,
+            streak: streak + 1
+          });
+        }
+
+        setPoints(p => p + 100);
+        setStreak(s => s + 1);
+        triggerNotification(currentT.pointsSuccess, 'success');
+      } else {
+        throw new Error(data.error || "Analysis failed");
+      }
+    } catch (e: any) {
+      triggerNotification(e.message || "Failed Aura review", 'error');
+      setScanStep('idle');
     } finally {
-      setIsChatting(false);
+      setScannerLoading(false);
+      // Turn off webcam stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
     }
   };
 
-  useEffect(() => {
-    onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      if (user) {
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          setUserData({ uid: user.uid, ...userDoc.data() } as UserData);
-        } else {
-          const initialData: UserData = {
-            uid: user.uid,
-            points: 0,
-            streak: 0,
-            badges: [],
-            displayName: user.displayName || '',
-            photoURL: user.photoURL || '',
-            gameProgress: { memory: 0, focus: 0 },
-            createdAt: serverTimestamp()
-          };
-          await setDoc(doc(db, 'users', user.uid), initialData);
-          // Set local state with a JS date for immediate UI use
-          setUserData({ ...initialData, createdAt: new Date() });
-        }
-        fetchHistory(user.uid);
-      }
-      setLoading(false);
-    });
-  }, []);
+  const restartScan = () => {
+    setIsRecordingVoice(false);
+    setCameraRecording(false);
+    setScannerActive(false);
+    setScanStep('idle');
+    setScanReflection("");
+    setScannerLoading(false);
+    setPopupSubStep('choice');
+    setSelectedMysteryCard(null);
+    setShowDiagnosticPopup(false);
+    setTempReflection("");
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    triggerNotification(lang === 'bn' ? "স্ক্যান সেশন প্রথম ধাপ থেকে পুনরায় শুরু করা হয়েছে।" : "Scan session restarted from first step.", 'success');
+  };
 
-  if (loading) return (
-    <div className="min-h-screen bg-bg flex items-center justify-center">
-      <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }}>
-        <Sparkles className="w-12 h-12 text-sage" />
-      </motion.div>
-    </div>
-  );
+  // Coaching Companion Chat
+  const submitCoachChat = async () => {
+    if (!coachInput.trim()) return;
+    const cleanInput = coachInput;
+    setCoachMessages(p => [...p, { role: 'user', text: cleanInput }]);
+    setCoachInput("");
+    setCoachLoading(true);
+
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: cleanInput, type: 'coach', lang })
+      });
+      const data = await response.json();
+      if (data.reflection) {
+        setCoachMessages(p => [...p, { role: 'aura', text: data.reflection }]);
+        speakNow(data.reflection);
+      } else {
+        throw new Error(data.error);
+      }
+    } catch(e: any) {
+      triggerNotification(e.message || "Aura lost connection", 'error');
+    } finally {
+      setCoachLoading(false);
+    }
+  };
+
+  // Handle diary save
+  const handleImprintJournal = async () => {
+    if (!journalInput.trim()) return;
+    setJournalLoading(true);
+    await submitAnalysis('text');
+    setJournalInput("");
+    setJournalLoading(false);
+  };
+
+  // Remove history item
+  const handleDeleteItem = async (itemId: string) => {
+    setJournalHistory(prev => prev.filter(i => i.id !== itemId));
+    if (user) {
+      try {
+        const itemDoc = doc(db, 'users', user.uid, 'checkins', itemId);
+        await deleteDoc(itemDoc);
+      } catch (e) {}
+    }
+    triggerNotification(currentT.deleteSuccess, 'success');
+  };
 
   return (
-    <div className="min-h-screen bg-bg text-ink selection:bg-sage selection:text-black font-sans overflow-x-hidden">
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-bg/50 backdrop-blur-2xl border-b border-white/5 px-4 sm:px-6 py-4 sm:py-5">
-        <div className="max-w-7xl mx-auto flex justify-between items-center gap-2">
-           <div className="flex items-center gap-3 sm:gap-5">
-              <div className="relative group cursor-pointer">
-                <div className="absolute -inset-3 bg-sage/30 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-sage rounded-2xl sm:rounded-[1.25rem] flex items-center justify-center text-black shadow-[0_10px_30px_rgba(163,230,53,0.3)] relative group-hover:scale-110 transition-transform duration-500"><Heart className="w-5 h-5 sm:w-6 sm:h-6 fill-current" /></div>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xl sm:text-2xl font-serif font-black tracking-tighter text-white uppercase leading-none">{currentT.appName}</span>
-                <span className="text-[7px] sm:text-[8px] font-black tracking-[0.4em] text-sage uppercase mt-1">Experimental AI Lab</span>
-              </div>
-           </div>
-           
-           <div className="flex items-center gap-2 sm:gap-6">
-              <button 
-                onClick={() => setLang(lang === 'bn' ? 'en' : 'bn')} 
-                className="hidden sm:flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-xl bg-white/5 border border-white/10 text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-white/60 hover:text-white transition-all shadow-inner"
-              >
-                <Globe className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                <span>{lang === 'bn' ? 'English' : 'বাংলা'}</span>
-              </button>
-              
-              <div className="hidden sm:block">
-                {user ? (
-                  <div className="flex items-center gap-3 sm:gap-6">
-                     <div className="hidden sm:flex flex-col items-end mr-2">
-                       <div className="flex items-center gap-2 mb-1">
-                         <div className="w-1.5 h-1.5 bg-sage rounded-full animate-pulse shadow-[0_0_10px_#a3e635]" />
-                         <span className="text-[10px] font-black text-white/40 uppercase tracking-widest leading-none">{userData?.points || 0} PTS</span>
-                       </div>
-                       <span className="text-sm font-serif font-black text-white leading-none tracking-tight">{user.displayName}</span>
-                     </div>
-                     <div className="relative group">
-                       <div className="absolute inset-0 bg-white/10 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                       <button onClick={logOut} className="relative p-2.5 sm:p-3.5 bg-white/5 hover:bg-white/10 rounded-xl sm:rounded-2xl text-white/40 hover:text-white transition-all border border-white/5 active:scale-95 shadow-xl"><LogOut className="w-4 h-4 sm:w-5 sm:h-5" /></button>
-                     </div>
-                  </div>
-                ) : (
-                  <button 
-                    onClick={handleLogin} 
-                    disabled={isLoggingIn}
-                    className="relative group overflow-hidden bg-white text-black px-4 sm:px-6 py-2 rounded-lg sm:rounded-xl font-black text-[9px] sm:text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_10px_20px_rgba(255,255,255,0.08)] flex items-center gap-2 border border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isLoggingIn ? (
-                      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
-                        <Zap className="w-4 h-4 text-sage" />
-                      </motion.div>
-                    ) : (
-                      <Sparkles className="w-4 h-4 text-sage relative z-10" />
-                    )}
-                    <span className="relative z-10">{isLoggingIn ? (lang === 'bn' ? 'লগইন হচ্ছে...' : 'LOGGING IN...') : currentT.loginWithGoogle}</span>
-                  </button>
-                )}
-              </div>
+    <div id="app-root" className="relative w-full min-h-screen overflow-x-hidden bg-[#050508] text-white">
+      {/* Immersive Looping Background Video */}
+      <video
+        id="bg-video-element"
+        className="fixed inset-0 w-full h-full object-cover pointer-events-none z-0"
+        autoPlay
+        muted
+        loop
+        playsInline
+        src={BG_VIDEO}
+      />
 
-              <button 
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="lg:hidden p-2.5 sm:p-3 bg-white/5 border border-white/10 rounded-xl text-white/60 hover:text-white transition-all active:scale-95"
-                id="mobile-menu-button"
-              >
-                {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
-           </div>
+      {/* Shadow overlay to ensure complete readability and stark visual contrast */}
+      <div className="fixed inset-0 bg-gradient-to-b from-black/50 via-[#070710]/80 to-[#020204]/95 z-0 pointer-events-none" />
+
+      {/* Floating particles effect glow */}
+      <div className="absolute top-24 left-1/4 w-96 h-96 rounded-full bg-sage/5 blur-3xl z-0 pointer-events-none animate-pulse" />
+      <div className="absolute bottom-40 right-1/4 w-[500px] h-[500px] rounded-full bg-purple-500/5 blur-3xl z-0 pointer-events-none animate-pulse-slow" />
+
+      {/* Navbar Container */}
+      <nav id="navbar-main" className="sticky top-0 w-full z-40 bg-black/40 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-4 sm:px-8 py-4">
+        {/* Core Logo and Edition */}
+        <div id="logo-container" className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-sage/30 to-purple-500/30 border border-white/10 flex items-center justify-center shadow-md">
+            <Infinity size={24} className="text-sage animate-pulse" strokeWidth={2} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold tracking-tight text-white text-lg sm:text-xl">MindMirror</span>
+              <span className="text-[9px] font-black tracking-widest text-[#A7C7E7] bg-white/5 uppercase border border-sage/30 px-2 py-0.5 rounded-md">PRATYUSHA</span>
+            </div>
+            <p className="text-[10px] text-white/50 tracking-wider hidden md:block">Interactive Biofield & Spiritual Companion</p>
+          </div>
         </div>
 
-        {/* Mobile Menu Overlay */}
-        <AnimatePresence>
-          {isMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: -20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              className="lg:hidden absolute top-full left-0 right-0 bg-bg/95 backdrop-blur-3xl border-b border-white/10 p-6 sm:p-8 space-y-8 shadow-[0_40px_100px_rgba(0,0,0,0.8)] overflow-y-auto max-h-[85vh]"
+        {/* Unified Nav Pill bar with large grown fonts */}
+        <div id="nav-pill-desktop" className="hidden md:flex bg-black/50 border border-white/10 items-center gap-1.5 rounded-2xl p-1.5">
+          {[
+            { id: 'dashboard', label: currentT.tabDashboard, icon: <LayoutDashboard size={18} /> },
+            { id: 'mirror', label: currentT.tabMirror, icon: <Camera size={18} /> },
+            { id: 'coach', label: currentT.tabCoach, icon: <Compass size={18} /> },
+            { id: 'journal', label: currentT.tabJournal, icon: <Activity size={18} /> },
+            { id: 'playground', label: currentT.tabPlayground, icon: <Brain size={18} /> }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs xl:text-sm font-extrabold tracking-wider transition-all cursor-pointer ${
+                activeTab === tab.id 
+                  ? 'bg-sage text-black font-black shadow-lg shadow-sage/20 scale-[1.03] border border-sage' 
+                  : 'text-white hover:text-white hover:bg-white/10'
+              }`}
             >
-              <div className="space-y-4">
-                 <div className="text-[10px] font-black text-sage uppercase tracking-[0.4em] mb-4 opacity-40">{lang === 'bn' ? 'মেনু' : 'NAVIGATION'}</div>
-                 {[
-                   { id: 'dashboard', icon: <LayoutDashboard />, label: currentT.dashboard },
-                   { id: 'history', icon: <History />, label: currentT.history },
-                   { id: 'exercises', icon: <Wind />, label: currentT.exercises },
-                   { id: 'coach', icon: <Brain />, label: currentT.coachTitle },
-                   { id: 'games', icon: <Zap />, label: (currentT as any).gamesTitle }
-                 ].map(item => (
-                   <button 
-                    key={item.id} 
-                    onClick={() => {
-                      setActiveTab(item.id as any);
-                      setIsMenuOpen(false);
-                    }} 
-                    className={`w-full flex items-center gap-5 p-5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border ${activeTab === item.id ? 'bg-white text-black border-white' : 'text-white/40 border-transparent hover:bg-white/5'}`}
-                   >
-                     <span className="w-5 h-5">{item.icon}</span> {item.label}
-                   </button>
-                 ))}
-              </div>
+              {tab.icon}
+              <span className="uppercase">{tab.label}</span>
+            </button>
+          ))}
+        </div>
 
-              <div className="pt-8 border-t border-white/5 space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="text-[10px] font-black text-sage uppercase tracking-[0.4em] opacity-40">{lang === 'bn' ? 'সেটিংস' : 'SETTINGS'}</div>
-                  <button 
-                    onClick={() => setLang(lang === 'bn' ? 'en' : 'bn')} 
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest text-white/60"
-                  >
-                    <Globe className="w-4 h-4" />
-                    <span>{lang === 'bn' ? 'English' : 'বাংলা'}</span>
-                  </button>
+        {/* Global Controls and Sign-In Stats */}
+        <div className="flex items-center gap-3">
+          {/* Language selector */}
+          <button 
+            onClick={() => {
+              setLang(l => l === 'en' ? 'bn' : 'en');
+              triggerNotification(lang === 'bn' ? "Language changed to English" : "ভাষা পরিবর্তন: বাংলা", 'success');
+            }}
+            className="px-3 py-2 rounded-xl border border-white/15 text-xs font-black tracking-widest uppercase bg-white/5 hover:bg-white/10 cursor-pointer flex items-center gap-1.5 text-sage transition-all"
+            title="Switch Language / ভাষা পরিবর্তন"
+          >
+            <span className="text-sm">🌐</span> {lang === 'en' ? 'বাংলা' : 'ENG'}
+          </button>
+
+          {/* User Status Badge / Leaderboard items */}
+          <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-2 rounded-xl text-xs shadow-inner">
+            <div className="flex items-center gap-1 text-orange-400 font-extrabold" title="Check-in Streak">
+              <Flame size={15} className="fill-orange-400 animate-bounce" />
+              <span className="text-sm">{streak}d</span>
+            </div>
+            <div className="w-px h-3 bg-white/20" />
+            <div className="font-black text-sage tracking-widest text-[11px]" title="MindPower Energy points">
+              {points} MW
+            </div>
+          </div>
+
+          {/* Auth Trigger and switch account support */}
+          {user ? (
+            <div className="flex items-center gap-2 bg-white/5 border border-white/10 p-1 rounded-xl">
+              <img src={user.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=60'} alt={user.displayName} className="w-7 h-7 rounded-lg border border-sage/40" />
+              <div className="hidden xl:flex flex-col text-left mr-1">
+                <span className="text-[10px] font-bold text-white/95 leading-none truncate max-w-[90px]">{user.displayName}</span>
+                <span className="text-[8px] text-white/40 leading-none mt-0.5 truncate max-w-[90px]">{user.email}</span>
+              </div>
+              <button 
+                onClick={async () => {
+                  await logOut();
+                  triggerNotification(lang === 'bn' ? "লগআউট করা হয়েছে। অন্য একাউন্ট সংযোগ করুন।" : "Logged out successfully. You can connect another user.", 'success');
+                }}
+                className="text-[10px] uppercase font-bold tracking-wider text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-2 py-1 rounded-lg cursor-pointer flex items-center gap-1 transition-all border border-red-500/20"
+                title={lang === 'bn' ? "অন্য অ্যাকাউন্ট দিয়ে প্রবেশ" : "Logout & switch account"}
+              >
+                <LogOut size={12} />
+                <span className="hidden xl:inline">{lang === 'bn' ? "বের হন" : "Exit"}</span>
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={async () => {
+                try {
+                  await signInWithGoogle();
+                  triggerNotification(lang === 'bn' ? "গুগল অ্যাকাউন্ট সংযুক্ত হয়েছে" : "Google Account Connected", 'success');
+                } catch (e: any) {
+                  triggerNotification(e.message || "Failed to sign in", 'error');
+                }
+              }}
+              className="bg-white text-black px-4 py-2 rounded-xl text-xs font-black hover:bg-white/90 cursor-pointer transition-all flex items-center gap-1.5 shadow-md scale-102 hover:scale-[1.04]"
+            >
+              <User size={14} strokeWidth={3} />
+              <span className="hidden sm:inline">Connect Google</span>
+            </button>
+          )}
+
+          {/* Mobile menu Button toggle */}
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="md:hidden liquid-glass text-white p-2.5 rounded-xl cursor-pointer flex items-center justify-center border border-white/15"
+          >
+            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+      </nav>
+
+      {/* Mobile drop menu */}
+      {menuOpen && (
+        <div className="absolute top-[76px] left-4 right-4 z-50 md:hidden bg-neutral-900 border border-white/10 rounded-2xl p-4 flex flex-col gap-2 shadow-2xl backdrop-blur-3xl">
+          {[
+            { id: 'dashboard', label: currentT.tabDashboard, icon: <LayoutDashboard size={18} /> },
+            { id: 'mirror', label: currentT.tabMirror, icon: <Camera size={18} /> },
+            { id: 'coach', label: currentT.tabCoach, icon: <Compass size={18} /> },
+            { id: 'journal', label: currentT.tabJournal, icon: <Activity size={18} /> },
+            { id: 'playground', label: currentT.tabPlayground, icon: <Brain size={18} /> }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id as any); setMenuOpen(false); }}
+              className={`flex items-center gap-4 w-full px-5 py-3 rounded-xl text-sm font-extrabold tracking-wide text-left cursor-pointer transition-all ${
+                activeTab === tab.id 
+                  ? 'bg-sage text-black font-black shadow-md' 
+                  : 'text-white hover:bg-white/5'
+              }`}
+            >
+              {tab.icon}
+              <span className="uppercase">{tab.label}</span>
+            </button>
+          ))}
+
+          {user && (
+            <div className="bg-white/5 border border-white/5 p-3 rounded-xl flex items-center justify-between mt-2">
+              <div className="flex items-center gap-2">
+                <img src={user.photoURL} alt={user.displayName} className="w-8 h-8 rounded-full border border-sage/40" />
+                <div className="text-left">
+                  <p className="text-xs font-black text-white leading-tight">{user.displayName}</p>
+                  <p className="text-[9px] text-white/40 leading-none">{user.email}</p>
+                </div>
+              </div>
+              <button
+                onClick={async () => {
+                  setMenuOpen(false);
+                  await logOut();
+                  triggerNotification(lang === 'bn' ? "লগআউট সফল" : "Logged out", 'success');
+                }}
+                className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-black px-3 py-2 rounded-xl border border-red-500/20 flex items-center gap-1 cursor-pointer transition-all"
+              >
+                <LogOut size={12} />
+                <span>{lang === 'bn' ? "আউট" : "Exit"}</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Hero Welcome banner on premium liquid glass */}
+      {activeTab === 'dashboard' && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 z-10 relative">
+          <div className="liquid-glass rounded-[32px] sm:rounded-[48px] p-6 sm:p-10 border border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden">
+            <div className="space-y-3 max-w-2xl text-left">
+              <div className="inline-flex items-center gap-1 bg-sage/10 border border-sage/20 text-sage px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
+                <Sparkles size={11} />
+                <span>{lang === 'bn' ? 'অরা সোল কানেক্ট' : 'Aura Soul Connect Active'}</span>
+              </div>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight font-serif uppercase">
+                {lang === 'bn' ? 'প্রতিদিন আরও সুন্দর করে বাঁচুন, সম্পূর্ণতা অনুভব করুন' : 'Live Better, Feel Whole Every Day'}
+              </h1>
+              <p className="text-white/60 text-xs sm:text-sm leading-relaxed max-w-xl font-light">
+                {lang === 'bn' 
+                  ? 'আপনার জীবনযাত্রার প্রতিটি পদক্ষেপের জন্য তৈরি এক আধ্যাত্মিক সহচরের সাথে নিজের আবেগকে নিয়ন্ত্রণ করুন—রুটিন তৈরি করুন, মানসিক উন্নতি ট্র্যাক করুন এবং প্রতিদিন স্থিতিশীল ও চনমনে জীবন যাপনের জন্য কাস্টমাইজড আধ্যাত্মিক ইনসাইট আনলক করুন।'
+                  : 'Take charge of how you feel with a companion built for your journey—build routines, follow your emotional growth, and unlock tailored spiritual insights for a steadier, more vibrant life each day.'}
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              <button 
+                onClick={() => setActiveTab('mirror')}
+                className="px-6 py-3.5 bg-sage text-black font-extrabold uppercase tracking-wider text-[11px] text-center rounded-2xl hover:bg-sage/90 transition-all cursor-pointer shadow-lg shadow-sage/10"
+              >
+                {lang === 'bn' ? 'অরা স্ক্যানার শুরু করুন' : 'Begin Aura Check-in'}
+              </button>
+              <button 
+                onClick={() => {
+                  const utter = new SpeechSynthesisUtterance(lang === 'bn' ? "মাইন্ড মিররে স্বাগতম। আপনার আত্মিক অনুশীলনের জন্য অরা প্রস্তুত।" : "Welcome to MindMirror. Together, we calibrate clarity.");
+                  utter.lang = lang === 'bn' ? 'bn-BD' : 'en-US';
+                  window.speechSynthesis.speak(utter);
+                }}
+                className="px-6 py-3.5 bg-white/5 border border-white/10 text-white font-bold uppercase tracking-wider text-[11px] rounded-2xl hover:bg-white/10 transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Volume2 size={14} className="text-sage animate-bounce" />
+                <span>{lang === 'bn' ? 'অরা ভয়েস শুনুন' : 'Greetings Voice'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Feature Layout Switcher */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 z-10 relative">
+        <AnimatePresence mode="wait">
+          {activeTab === 'dashboard' && (
+            <motion.div
+              key="dashboard-pane"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-10"
+            >
+              {/* Daily Energy Metrics row / Quick Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="liquid-glass rounded-3xl p-6 border border-white/5 space-y-2 text-left">
+                  <span className="text-[10px] font-black uppercase text-sage/60 tracking-wider">
+                    {lang === 'bn' ? 'অরা সচেনতা স্তর' : 'Aura Consciousness'}
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-extrabold text-white">
+                      {lang === 'bn' ? 'লেভেল ৪' : 'Level 4'}
+                    </span>
+                    <span className="text-xs text-sage font-black tracking-widest">(350+ MW)</span>
+                  </div>
+                  <p className="text-[10px] text-white/45">
+                    {lang === 'bn' 
+                      ? 'আপনার বায়োফিল্ড ক্যালিব্রেশন আপগ্রেড হয়েছে। স্ক্যানার প্রক্রিয়ার জন্য প্রস্তুত।' 
+                      : 'Your biofield calibration has upgraded. Ready for scanner alignments.'}
+                  </p>
                 </div>
 
-                  {user ? (
-                    <div className="space-y-6">
-                      <div className="bg-white/5 p-6 rounded-3xl border border-white/10 flex items-center justify-between">
-                        <div className="space-y-1">
-                          <div className="text-[10px] font-black text-sage uppercase tracking-widest leading-none mb-1">{userData?.points || 0} PTS</div>
-                          <div className="text-lg font-serif font-black text-white">{user.displayName}</div>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => {
-                          logOut();
-                          setIsMenuOpen(false);
-                        }} 
-                        className="w-full flex items-center justify-center gap-3 p-5 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20 font-black text-xs uppercase tracking-widest"
-                      >
-                        <LogOut className="w-5 h-5" /> {lang === 'bn' ? 'লগ-আউট' : 'LOGOUT'}
-                      </button>
+                <div className="liquid-glass rounded-3xl p-6 border border-white/5 space-y-2 text-left">
+                  <span className="text-[10px] font-black uppercase text-purple-400/60 tracking-wider">
+                    {lang === 'bn' ? 'সাপ্তাহিক আন্তরিকতা' : 'Weekly Devotion'}
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-extrabold text-white">
+                      {lang === 'bn' ? `${streak} দিন` : `${streak} Days`}
+                    </span>
+                    <span className="text-xs text-purple-300 font-extrabold uppercase">
+                      {lang === 'bn' ? 'স্ট্রিক' : 'Streak'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-white/45">
+                    {lang === 'bn' 
+                      ? 'কসমিক কো-অর্ডিনেট রিফ্লেক্সেস আনলক করতে আপনার মাইন্ডফুল স্ট্রিক বজায় রাখুন।' 
+                      : 'Maintain your mindful log streak to unlock cosmic coordinate reflexes.'}
+                  </p>
+                </div>
+
+                <div className="liquid-glass rounded-3xl p-6 border border-white/5 space-y-2 text-left">
+                  <span className="text-[10px] font-black uppercase text-sage/60 tracking-wider">
+                    {lang === 'bn' ? 'আত্মিক রিজার্ভ এনার্জি' : 'Soul Reserves'}
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-extrabold text-white">
+                      {lang === 'bn' ? `${points} MW` : `${points} MW`}
+                    </span>
+                    <span className="text-xs text-white/40 uppercase">
+                      {lang === 'bn' ? 'মাইন্ডপাওয়ার' : 'MindPower'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-white/45">
+                    {lang === 'bn' 
+                      ? 'এলিট সেন্সরি লেভেল আনলক করতে সক্রিয়ভাবে মনের পরিচর্যার দ্বারা পয়েন্ট অর্জন করুন।' 
+                      : 'Earn points through active check-ins to unlock elite sensory levels.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Dynamic MindMirror Onboarding Guide & Reflection Info Panel */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-left">
+                {/* Part 1: How to get started (কিভাবে শুরু করবেন) */}
+                <div className="liquid-glass rounded-[32px] p-6 lg:p-8 border border-white/5 space-y-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-sage/10 text-sage border border-sage/20 flex items-center justify-center font-black">
+                      ?
                     </div>
-                  ) : (
-                    <button 
-                      onClick={handleLogin} 
-                      disabled={isLoggingIn}
-                      className="w-full h-20 rounded-[28px] bg-white text-black font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 disabled:opacity-50"
-                    >
-                      {isLoggingIn ? (
-                        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
-                          <Zap className="w-5 h-5 text-sage" />
-                        </motion.div>
-                      ) : (
-                        <Sparkles className="w-5 h-5 text-sage" />
-                      )}
-                      <span>{isLoggingIn ? (lang === 'bn' ? 'লগইন হচ্ছে...' : 'LOGGING IN...') : currentT.loginWithGoogle}</span>
-                    </button>
-                  )}
+                    <div>
+                      <h4 className="text-base font-serif font-bold text-white uppercase tracking-tight">
+                        {lang === 'bn' ? 'কিভাবে শুরু করবেন?' : 'How to Get Started?'}
+                      </h4>
+                      <p className="text-[9px] text-sage font-black uppercase tracking-widest">
+                        {lang === 'bn' ? 'আপনার আত্মিক গাইড' : 'MindMirror Quick Orientation'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3.5 pr-2">
+                    <div className="flex gap-3">
+                      <div className="w-5 h-5 rounded-full bg-white/10 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                        ১
+                      </div>
+                      <div>
+                        <h5 className="text-[11px] font-bold uppercase tracking-wider text-white">
+                          {lang === 'bn' ? 'অডিট অ্যাকাউন্ট কানেক্ট' : 'Secure Integration'}
+                        </h5>
+                        <p className="text-[11px] text-white/50 leading-relaxed">
+                          {lang === 'bn' 
+                            ? 'গুগল সংযোগ ব্যবহার করে ফ্রি ১০০পয়েন্ট (MW) অর্জন করুন ও ডেটা সুরক্ষিত রাখুন।' 
+                            : 'Authenticating via Google keeps your diagnostic energy patterns and check-ins fully synchronized.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <div className="w-5 h-5 rounded-full bg-white/10 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                        ২
+                      </div>
+                      <div>
+                        <h5 className="text-[11px] font-bold uppercase tracking-wider text-white">
+                          {lang === 'bn' ? 'পছন্দসই মাধ্যমে স্ক্যান করুন' : 'Calibrate Resonance'}
+                        </h5>
+                        <p className="text-[11px] text-white/50 leading-relaxed">
+                          {lang === 'bn' 
+                            ? 'The Deep Mirror ট্যাবে যান। ৩টি মোড পাবেন: ছবির মাধ্যমে স্ক্যান, ৫ সেকেন্ড ভিডিও রেকর্ড বা ভয়েস রেকর্ড ও মনের কথা লিখে এনালাইসিস।' 
+                            : 'Go to The Deep Mirror tab. Choose your preferred input (snapshot photo clicks, video camera records, voice notes, or text drafts) to map your biofields.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <div className="w-5 h-5 rounded-full bg-white/10 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+                        ৩
+                      </div>
+                      <div>
+                        <h5 className="text-[11px] font-bold uppercase tracking-wider text-white">
+                          {lang === 'bn' ? 'প্রতিফলন ও ট্র্যাকিং' : 'Chronicle Journey'}
+                        </h5>
+                        <p className="text-[11px] text-white/50 leading-relaxed">
+                          {lang === 'bn' 
+                            ? 'স্ক্যানার আপনার অনুভূতি রিড করে "Reflection Logs" তৈরি করবে যা হিস্ট্রিতে চিরস্থায়ীভাবে সেভ হবে।' 
+                            : 'The on-device scanner compiles emotional evaluation feedback directly saved as "Reflection Logs" inside your ledger.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Part 2: Reflection Log ta kiii? (রিফ্লেকশন লগ কী?) */}
+                <div className="liquid-glass rounded-[32px] p-6 lg:p-8 border border-white/5 space-y-4 flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-300 border border-purple-500/20 flex items-center justify-center">
+                        <Activity size={18} />
+                      </div>
+                      <div>
+                        <h4 className="text-base font-serif font-bold text-white uppercase tracking-tight">
+                          {lang === 'bn' ? 'রিফ্লেকশন লগ কী?' : 'What is a Reflection Log?'}
+                        </h4>
+                        <p className="text-[9px] text-purple-300 font-black uppercase tracking-widest">
+                          {lang === 'bn' ? 'আত্মিক জার্নাল ও আবেগীয় ট্র্যাকার' : 'Sacred Energetic Blueprint'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-[11px] text-white/70 leading-relaxed space-y-3">
+                      <p>
+                        {lang === 'bn' 
+                          ? 'প্রতিফলন বা রিফ্লেকশন লগ হলো আপনার আবেগীয় যাত্রার একটি সম্পূর্ণ আধ্যাত্মিক মানচিত্র।' 
+                          : 'A Reflection Log serves as your private emotional coordinate map or mind ledger.'}
+                      </p>
+                      <p>
+                        {lang === 'bn' 
+                          ? 'যখনই আপনি কোয়ান্টাম রেজোন্যান্স স্ক্যানার ব্যবহার করেন (তা চোখ বন্ধ রাখার ৫ সেকেন্ডের ভিডিও হোক, ছবি ক্লিক, ভয়েস রেকর্ড বা মনের ডায়েরি লিখা হোক), আমাদের অন-ডিভাইস মেন্টর তা অত্যন্ত গুরুত্বের সাথে পর্যবেক্ষণ করে।' 
+                          : 'Every time you check-in using your camera, record sensory throat-chakra voices, or type a digital diary, Aura reads frame frequencies and generates a highly empathetic evaluation.'}
+                      </p>
+                      <p className="text-white/50">
+                        {lang === 'bn' 
+                          ? 'এটি আপনার মনের গভীরের অনুভূতিগুলোকে চিরকাল ধরে রাখে এবং সময়ের সাথে তা কীভাবে উন্নত হচ্ছে তা চার্ট ও গ্রাফে প্রতিফলিত করে।' 
+                          : 'These files are archived chronologically. Over time, they create a beautifully charted timeline of your spiritual expansion, streak counts, and wellness growth.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => setActiveTab('journal')}
+                    className="w-full py-3.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-300 font-bold uppercase tracking-wider text-[10px] rounded-2xl transition-all cursor-pointer flex items-center justify-center gap-2 mt-4"
+                  >
+                    <Activity size={12} />
+                    <span>{lang === 'bn' ? 'রিফ্লেকশন লগ ডায়েরি দেখুন' : 'Explore Reflection logs'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Four Main Session Dashboard Stations */}
+              <div className="space-y-4">
+                <div className="text-left">
+                  <h3 className="font-serif text-lg font-bold text-white uppercase tracking-wider">{lang === 'bn' ? 'সেশন ড্যাশবোর্ড স্টেশন সমূহ' : 'Active Session Stations'}</h3>
+                  <p className="text-[10px] text-white/40 uppercase tracking-widest">{lang === 'bn' ? 'একটি স্টেশন বেছে নিয়ে আপনার সেশন পরিচালনা করুন' : 'Launch custom spiritual tools to regulate and monitor vital flows'}</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Station 1: Camera Scan */}
+                  <div 
+                    onClick={() => setActiveTab('mirror')}
+                    className="liquid-glass rounded-[32px] p-8 border border-white/5 hover:border-sage/20 transition-all cursor-pointer flex flex-col justify-between h-64 text-left group"
+                  >
+                    <div className="space-y-4">
+                      <div className="w-12 h-12 rounded-2xl bg-sage/10 border border-sage/20 flex items-center justify-center text-sage group-hover:scale-105 transition-transform">
+                        <Camera size={22} strokeWidth={1.5} />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-lg font-serif font-bold text-white group-hover:text-sage transition-colors">{lang === 'bn' ? 'কোয়ান্টাম রেজোন্যান্স স্ক্যানার' : 'Quantum Resonance Scanner'}</h4>
+                        <p className="text-xs text-white/50 leading-relaxed font-light">
+                          {lang === 'bn' ? 'কম্পিউটার ভিশন প্রযুক্তির মাধ্যমে আপনার আভা এবং মানসিক স্পন্দন মেলাুন।' : 'Sync with your reflection and map vital energy streams with on-device AI computer-vision analysis.'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-sage text-[10px] font-black uppercase tracking-wider mt-4">
+                      <span>{lang === 'bn' ? 'স্টেশন চালু করুন' : 'Launch Glass Lens'}</span>
+                      <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+
+                  {/* Station 2: Coach */}
+                  <div 
+                    onClick={() => setActiveTab('coach')}
+                    className="liquid-glass rounded-[32px] p-8 border border-white/5 hover:border-sage/20 transition-all cursor-pointer flex flex-col justify-between h-64 text-left group"
+                  >
+                    <div className="space-y-4">
+                      <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-300 group-hover:scale-105 transition-transform">
+                        <Compass size={22} strokeWidth={1.5} />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-lg font-serif font-bold text-white group-hover:text-purple-300 transition-colors">{lang === 'bn' ? 'অরা সহচর মেন্টর' : 'Aura Companion Coach'}</h4>
+                        <p className="text-xs text-white/50 leading-relaxed font-light">
+                          {lang === 'bn' ? 'আপনার মন খুলে লিখুন এবং অরার কাছ থেকে গভীর আধ্যাত্মিক উত্তর পান।' : 'Pour out your heart and receive poetic, deeply understanding emotional reflections directly from Aura.'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-purple-300 text-[10px] font-black uppercase tracking-wider mt-4">
+                      <span>{lang === 'bn' ? 'মেন্টরের সাথে কথা বলুন' : 'Speak to Companion'}</span>
+                      <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+
+                  {/* Station 3: Journal */}
+                  <div 
+                    onClick={() => setActiveTab('journal')}
+                    className="liquid-glass rounded-[32px] p-8 border border-white/5 hover:border-sage/20 transition-all cursor-pointer flex flex-col justify-between h-64 text-left group"
+                  >
+                    <div className="space-y-4">
+                      <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-300 group-hover:scale-105 transition-transform">
+                        <Activity size={22} strokeWidth={1.5} />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-lg font-serif font-bold text-white group-hover:text-blue-300 transition-colors">{lang === 'bn' ? 'আধ্যাত্মিক ডায়েরি ও ট্র্যাক' : 'Spiritual Notebook'}</h4>
+                        <p className="text-xs text-white/50 leading-relaxed font-light">
+                          {lang === 'bn' ? 'আপনার দৈনন্দিন চিন্তা লিখে রাখুন এবং আবেগীয় পরিবর্তনের চার্ট পর্যবেক্ষণ করুন।' : 'Record dynamic mindful logs and view high-contrast emotional resonance charts across your timeline.'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-blue-300 text-[10px] font-black uppercase tracking-wider mt-4">
+                      <span>{lang === 'bn' ? 'ডায়েরি উন্মোচন করুন' : 'Open Notebook log'}</span>
+                      <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+
+                  {/* Station 4: Breathing/Game */}
+                  <div 
+                    onClick={() => setActiveTab('playground')}
+                    className="liquid-glass rounded-[32px] p-8 border border-white/5 hover:border-sage/20 transition-all cursor-pointer flex flex-col justify-between h-64 text-left group"
+                  >
+                    <div className="space-y-4">
+                      <div className="w-12 h-12 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-300 group-hover:scale-105 transition-transform">
+                        <Brain size={22} strokeWidth={1.5} />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-lg font-serif font-bold text-white group-hover:text-orange-300 transition-colors">{lang === 'bn' ? 'প্লেগ্রাউন্ড ও শ্বাসক্রিয়া' : 'Mind & Sensory Playground'}</h4>
+                        <p className="text-xs text-white/50 leading-relaxed font-light">
+                          {lang === 'bn' ? 'রিস্পিরেটরি কো-অর্ডিনেশন দিয়ে স্নায়ুবিক ভারসাম্য ও প্রতিক্রিয়া উন্নত করুন।' : 'Regulate breathing rhythms or sharpen cognitive reflexes in reactive volatile energy star spaces.'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-orange-300 text-[10px] font-black uppercase tracking-wider mt-4">
+                      <span>{lang === 'bn' ? 'প্লেগ্রাউন্ডে প্রবেশ করুন' : 'Enter Play Sanctuary'}</span>
+                      <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
-      </nav>
 
-      {user && userData ? (
-        <main className="pt-24 sm:pt-32 pb-40 px-4 sm:px-6 max-w-7xl mx-auto min-h-screen">
-          <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-start mb-20">
-             <div className="hidden lg:block lg:w-80 w-full shrink-0 space-y-3 sm:space-y-4">
-                {[
-                  { id: 'dashboard', icon: <LayoutDashboard />, label: currentT.dashboard },
-                  { id: 'history', icon: <History />, label: currentT.history },
-                  { id: 'exercises', icon: <Wind />, label: currentT.exercises },
-                  { id: 'coach', icon: <Brain />, label: currentT.coachTitle },
-                  { id: 'games', icon: <Zap />, label: (currentT as any).gamesTitle }
-                ].map(item => (
-                  <button key={item.id} onClick={() => setActiveTab(item.id as any)} className={`w-full flex items-center gap-4 sm:gap-6 px-6 sm:px-8 py-5 sm:py-6 rounded-2xl sm:rounded-[32px] font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] transition-all border ${activeTab === item.id ? 'bg-white text-black shadow-2xl scale-[1.02] border-white' : 'text-white/30 hover:text-white hover:bg-white/5 border-transparent'}`}>
-                    <span className="w-5 h-5 sm:w-6 sm:h-6">{item.icon}</span> {item.label}
+          {activeTab === 'mirror' && (
+            !user ? (
+              <LoginRequiredView tab="mirror" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} />
+            ) : (
+              <motion.div 
+                key="mirror-pane"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="grid grid-cols-1 lg:grid-cols-12 gap-8"
+              >
+              {/* Deep Mirror Face Diagnostic Camera panel */}
+              <div className="lg:col-span-7 liquid-glass rounded-[40px] p-6 sm:p-10 border border-white/5 flex flex-col justify-between text-center relative max-w-full">
+                <div className="space-y-2 mb-6">
+                  <div className="text-sage font-black text-[10px] tracking-[0.4em] uppercase">{currentT.tabMirror}</div>
+                  <h2 className="text-2xl sm:text-3xl font-serif tracking-tight font-bold uppercase text-white">Quantum Resonance Scanner</h2>
+                  <p className="text-xs text-white/50 max-w-md mx-auto">
+                    {lang === 'bn' 
+                      ? 'ভিডিও record, ছবি ক্লিক, ভয়েস রেকর্ড বা লিখার মাধ্যমে আপনার আভা এবং মানসিক স্পন্দন বিশ্লেষণ করুন।' 
+                      : ' Calibrate vital energy frequencies comfortably via real-time camera snapshot, video recording, voice note, or deep text entry.'}
+                  </p>
+                </div>
+
+                {/* Unified Input Mode Pill Selection Swapper */}
+                <div className="grid grid-cols-3 bg-black/40 p-1.5 rounded-2xl border border-white/5 max-w-md mx-auto mb-6 w-full">
+                  <button 
+                    onClick={() => {
+                      setScannerMode('camera');
+                      setScanStep('idle');
+                    }}
+                    className={`py-2 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-1.5 ${
+                      scannerMode === 'camera' 
+                        ? 'bg-sage text-black shadow-lg shadow-sage/10 font-black' 
+                        : 'text-white/60 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <Camera size={14} />
+                    <span>{lang === 'bn' ? 'ক্যামেরা' : 'Camera'}</span>
                   </button>
-                ))}
-             </div>
+                  <button 
+                    onClick={() => {
+                      setScannerMode('voice');
+                      setScanStep('idle');
+                    }}
+                    className={`py-2 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-1.5 ${
+                      scannerMode === 'voice' 
+                        ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/15 font-black' 
+                        : 'text-white/60 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <Mic size={14} />
+                    <span>{lang === 'bn' ? 'ভয়েস' : 'Voice'}</span>
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setScannerMode('text');
+                      setScanStep('idle');
+                    }}
+                    className={`py-2 rounded-xl text-xs font-bold tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-1.5 ${
+                      scannerMode === 'text' 
+                        ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/15 font-black' 
+                        : 'text-white/60 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <FileText size={14} />
+                    <span>{lang === 'bn' ? 'টেক্সট' : 'Text'}</span>
+                  </button>
+                </div>
 
-             <div className="flex-1 w-full">
-               <AnimatePresence mode="wait">
-                 {activeTab === 'dashboard' && (
-              <motion.div key="dashboard-view" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="grid lg:grid-cols-[1.5fr_1fr] gap-12 items-start">
-                <div className="space-y-10">
-                  {/* Daily Affirmation Card */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white/5 p-6 sm:p-8 rounded-[36px] border border-white/10 relative overflow-hidden h-full">
-                      <div className="absolute top-0 right-0 p-6 sm:p-8"><Sparkles className="w-6 h-6 sm:w-8 sm:h-8 text-sage/20" /></div>
-                      <div className="text-[9px] sm:text-[10px] font-black text-sage uppercase tracking-[0.4em] mb-4">{currentT.affirmationTitle}</div>
-                      <p className="text-lg sm:text-xl font-serif italic text-white/80 leading-snug">"{dailyAffirmation}"</p>
-                    </motion.div>
-
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-sage p-6 sm:p-8 rounded-[36px] relative overflow-hidden h-full flex flex-col justify-between group cursor-pointer active:scale-95 transition-all shadow-[0_20px_40px_rgba(132,204,22,0.2)]" onClick={() => startExercise(exercises[1])}>
-                      <div className="absolute top-0 right-0 p-6 sm:p-8 text-black/10"><Wind className="w-12 h-12 sm:w-16 sm:h-16 group-hover:scale-110 transition-transform" /></div>
-                      <div className="text-[9px] sm:text-[10px] font-black text-black uppercase tracking-[0.4em] mb-2 opacity-40">{currentT.quickCalm}</div>
-                      <h4 className="text-xl sm:text-2xl font-serif font-black text-black tracking-tighter leading-none mb-4">Box Breathing</h4>
-                      <div className="text-[9px] sm:text-[10px] font-black text-black/60 uppercase tracking-widest flex items-center gap-2"><Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" /> {lang === 'bn' ? 'তাতক্ষনিক প্রশান্তি' : 'INSTANT CALM'}</div>
-                    </motion.div>
+                {/* Aura Vibe Mood Selector with live colors */}
+                <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-4 max-w-md mx-auto mb-6 w-full text-left space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-black tracking-widest uppercase text-white/50">
+                      {lang === 'bn' ? '১. আপনার বর্তমান মেজাজ নির্বাচন করুন:' : '1. Choose Simulated Vibe:'}
+                    </span>
+                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                      scanMood === 'good' ? 'bg-amber-500/10 text-amber-300' :
+                      scanMood === 'bad' ? 'bg-rose-500/10 text-rose-300' :
+                      scanMood === 'calm' ? 'bg-cyan-500/10 text-cyan-300' : 'bg-orange-500/10 text-orange-400'
+                    }`}>
+                      {scanMood === 'good' ? (lang === 'bn' ? 'ভালো মেজাজ' : 'Good Mood') :
+                       scanMood === 'bad' ? (lang === 'bn' ? 'খারাপ মেজাজ' : 'Bad Mood') :
+                       scanMood === 'calm' ? (lang === 'bn' ? 'শান্ত মেজাজ' : 'Cool Calm') : (lang === 'bn' ? 'উত্তেজিত মেজাজ' : 'Stressed')}
+                    </span>
                   </div>
 
-                  <div className="bg-white/[0.03] backdrop-blur-3xl p-6 sm:p-12 rounded-[40px] border border-white/10 relative overflow-hidden group perspective-1000 shadow-2xl">
-                     <div className="absolute top-0 right-0 w-64 h-64 bg-sage/10 blur-[100px] rounded-full translate-x-1/2 -translate-y-1/2" />
-                     <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8">
-                        <div>
-                          <h2 className="text-xl sm:text-4xl font-serif font-black mb-2 sm:mb-3 tracking-tighter text-white">{lang === 'bn' ? 'আপনার আজকের মিরর...' : 'Your Mirror Today...'}</h2>
-                          <p className="text-ink/60 text-xs sm:text-sm max-w-md font-medium uppercase tracking-widest leading-loose">{lang === 'bn' ? 'মুড এনালাইসিস এবং স্ট্রেস ট্র্যাকিং সেশন শুরু করুন।' : 'Start your mood analysis and stress tracking session.'}</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    <button
+                      onClick={() => setScanMood('good')}
+                      className={`py-3 px-1.5 rounded-xl text-[10px] font-bold tracking-wider uppercase transition-all flex flex-col items-center gap-1 ${
+                        scanMood === 'good' 
+                          ? 'bg-amber-500 text-black font-black shadow-lg shadow-amber-500/15 scale-[1.03]' 
+                          : 'bg-white/[0.03] text-white/60 hover:text-white border border-white/5'
+                      }`}
+                    >
+                      <span className="text-sm">🌟</span>
+                      <span>{lang === 'bn' ? 'ভালো' : 'Good'}</span>
+                    </button>
+                    <button
+                      onClick={() => setScanMood('bad')}
+                      className={`py-3 px-1.5 rounded-xl text-[10px] font-bold tracking-wider uppercase transition-all flex flex-col items-center gap-1 ${
+                        scanMood === 'bad' 
+                          ? 'bg-rose-500 text-white font-black shadow-lg shadow-rose-500/15 scale-[1.03]' 
+                          : 'bg-white/[0.03] text-white/60 hover:text-white border border-white/5'
+                      }`}
+                    >
+                      <span className="text-sm">🌧️</span>
+                      <span>{lang === 'bn' ? 'খারাপ' : 'Bad'}</span>
+                    </button>
+                    <button
+                      onClick={() => setScanMood('calm')}
+                      className={`py-3 px-1.5 rounded-xl text-[10px] font-bold tracking-wider uppercase transition-all flex flex-col items-center gap-1 ${
+                        scanMood === 'calm' 
+                          ? 'bg-cyan-500 text-black font-black shadow-lg shadow-cyan-500/15 scale-[1.03]' 
+                          : 'bg-white/[0.03] text-white/60 hover:text-white border border-white/5'
+                      }`}
+                    >
+                      <span className="text-sm">🧘</span>
+                      <span>{lang === 'bn' ? 'শান্ত' : 'Calm'}</span>
+                    </button>
+                    <button
+                      onClick={() => setScanMood('stressed')}
+                      className={`py-3 px-1.5 rounded-xl text-[10px] font-bold tracking-wider uppercase transition-all flex flex-col items-center gap-1 ${
+                        scanMood === 'stressed' 
+                          ? 'bg-orange-500 text-black font-black shadow-lg shadow-orange-500/15 scale-[1.03]' 
+                          : 'bg-white/[0.03] text-white/60 hover:text-white border border-white/5'
+                      }`}
+                    >
+                      <span className="text-sm">⚡</span>
+                      <span>{lang === 'bn' ? 'উত্তেজিত' : 'Stressed'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sub-mode Viewports */}
+                {scannerMode === 'camera' && (
+                  <div className="my-4 flex flex-col items-center">
+                    {/* Camera lens container */}
+                    <div className="relative w-64 h-64 sm:w-72 sm:h-72 rounded-full border border-white/10 flex items-center justify-center overflow-hidden bg-black/40 shadow-inner group mb-6">
+                      <div className="absolute inset-2 rounded-full border border-white/5 bg-gradient-to-tr from-sage/5 to-purple-500/5 animate-spin-slow pointer-events-none" />
+                      
+                      {scannerActive ? (
+                        <video 
+                          ref={(el) => {
+                            videoRef.current = el;
+                            if (el && streamRef.current) {
+                              el.srcObject = streamRef.current;
+                            }
+                          }}
+                          autoPlay 
+                          playsInline 
+                          muted 
+                          className="w-full h-full object-cover scale-[1.05]"
+                        />
+                      ) : (
+                        <div className="text-center p-6 space-y-4">
+                          <div className="w-16 h-16 rounded-full bg-sage/10 mx-auto flex items-center justify-center border border-sage/20 text-sage group-hover:scale-110 transition-transform">
+                            <Camera size={26} strokeWidth={1.5} />
+                          </div>
+                          <p className="text-[10px] text-white/40 uppercase tracking-widest font-black leading-relaxed">{lang === 'bn' ? 'আই পিক্সেল চালু' : 'Face alignment active'}</p>
                         </div>
-                        {sessionTimeLeft && (
-                          <div className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em] border ${onCooldown ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-sage/10 text-sage border-sage/20'}`}>
-                            {onCooldown ? currentT.cooldown : currentT.sessionRemaining} {sessionTimeLeft}
+                      )}
+
+                      {/* Video recording blink REC border */}
+                      {cameraRecording && (
+                        <div className="absolute inset-0 border-4 border-red-500 rounded-full animate-pulse-slow flex flex-col justify-start items-center pt-8">
+                          <div className="flex items-center gap-2 bg-black/60 px-3 py-1 rounded-full border border-red-500/20">
+                            <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
+                            <span className="text-[9px] font-black tracking-widest text-white uppercase">REC {cameraRecordingSecs}s</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Photo Snap flash overlay */}
+                      <AnimatePresence>
+                        {cameraClickFlash && (
+                          <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-pink-500 z-50 animate-pulse"
+                          />
+                        )}
+                      </AnimatePresence>
+
+                      {/* Operational overlay lines */}
+                      <div className="absolute inset-0 pointer-events-none border-[12px] border-[#070710]/90 rounded-full" />
+                      
+                      {/* Phase countdown overlays */}
+                      <AnimatePresence>
+                        {scannerActive && scanCountdown > 0 && !cameraRecording && (
+                          <motion.div 
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 1.2 }}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-full flex flex-col justify-center items-center p-6"
+                          >
+                            <div className="text-4xl sm:text-5xl font-black font-serif text-sage mb-2">{scanCountdown}s</div>
+                            <p className="text-[10px] font-black uppercase text-center tracking-widest max-w-[200px] leading-relaxed text-white">
+                              {scanStep === 'close' ? currentT.scanEyesClose : currentT.scanEyesOpen}
+                            </p>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {/* Aura reflection flow mapping loader */}
+                      {scanStep === 'analyzing' && (
+                        <div className="absolute inset-0 bg-gradient-to-tr from-pink-500/90 via-purple-950/95 to-pink-900/90 flex flex-col justify-center items-center p-6 rounded-full z-40 border-4 border-pink-500/30">
+                          <RefreshCw size={36} className="text-pink-300 animate-spin mb-4" />
+                          <p className="text-[10px] font-black uppercase tracking-widest text-center animate-pulse text-white">{currentT.scanAnalyzing}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Camera Dynamic Actions block */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full max-w-lg mt-2">
+                      <button 
+                        onClick={triggerPhotoClick}
+                        disabled={scannerLoading || cameraRecording || scanStep === 'analyzing'}
+                        className="py-4 px-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:pointer-events-none"
+                      >
+                        <Camera size={14} className="text-sage" />
+                        <span>{lang === 'bn' ? 'ছবি ক্লিক স্ক্যান' : 'Click Photo Scan'}</span>
+                      </button>
+
+                      {cameraRecording ? (
+                        <button 
+                          onClick={() => {
+                            setCameraRecording(false);
+                            setScanStep('analyzing');
+                            submitAnalysis('face');
+                          }}
+                          className="py-4 px-4 bg-red-500 hover:bg-red-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer"
+                        >
+                          <X size={14} />
+                          <span>{lang === 'bn' ? 'রেকর্ড থামান ও বিশ্লেষণ করুন' : 'Stop & Analyze Video'}</span>
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={triggerVideoRecord}
+                          disabled={scannerLoading || cameraRecording || scannerActive || scanStep === 'analyzing'}
+                          className="py-4 px-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:pointer-events-none animate-pulse"
+                        >
+                          <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse flex-shrink-0" />
+                          <span>{lang === 'bn' ? 'ভিডিও রেকর্ড ২ মি.' : 'Record Video (2m)'}</span>
+                        </button>
+                      )}
+
+                      {scanStep === 'done' ? (
+                        <button 
+                          onClick={() => setScanStep('idle')}
+                          className="py-4 px-4 bg-white text-black hover:bg-white/90 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5"
+                        >
+                          <RefreshCw size={12} />
+                          <span>{lang === 'bn' ? 'রিসেট করুন' : 'Recalibrate'}</span>
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={startCameraScan}
+                          disabled={scannerActive || cameraRecording || scanStep === 'analyzing'}
+                          className="py-4 px-4 bg-sage text-black hover:bg-sage/90 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 disabled:opacity-30 disabled:pointer-events-none"
+                        >
+                          <Sparkles size={12} />
+                          <span>{lang === 'bn' ? 'গাইডেড স্ক্যান' : 'Guided Aura Scan'}</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {scannerMode === 'voice' && (
+                  <div className="my-6 flex flex-col items-center">
+                    {/* Voice spectrum animated orb container */}
+                    <div className="relative w-60 h-60 rounded-full bg-black/40 border border-purple-500/20 flex flex-col justify-center items-center overflow-hidden mb-6 group">
+                      <div className="absolute inset-4 rounded-full border border-purple-500/10 bg-gradient-to-br from-purple-500/5 to-blue-500/5 pointer-events-none" />
+                      
+                      {isRecordingVoice ? (
+                        <div className="text-center p-6 space-y-4">
+                          {/* Animated micro bars */}
+                          <div className="flex justify-center items-center gap-1.5 h-12">
+                            {[1, 2, 3, 4, 5, 4, 3, 2, 1, 3, 4, 5, 2, 1].map((scale, i) => (
+                              <motion.div 
+                                key={i}
+                                animate={{ height: [12, scale * 10, 12] }}
+                                transition={{ repeat: Infinity, duration: 0.6 + (i * 0.05), ease: "easeInOut" }}
+                                className="w-1 bg-gradient-to-t from-purple-500 to-sage rounded-full"
+                              />
+                            ))}
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[10px] text-purple-400 uppercase tracking-widest font-black leading-relaxed animate-pulse">{lang === 'bn' ? 'ভয়েস রেকর্ড হচ্ছে...' : 'VOICE RECORDING...'}</p>
+                            <p className="text-xs text-white/60 font-mono">{lang === 'bn' ? `শুনছি... ${voiceSecs}সে. / ১২০সে.` : `Listening... ${voiceSecs}s / 120s`}</p>
+                          </div>
+                        </div>
+                      ) : scanStep === 'analyzing' ? (
+                        <div className="text-center p-6 flex flex-col justify-center items-center">
+                          <RefreshCw size={36} className="text-purple-400 animate-spin mb-4" />
+                          <p className="text-[10px] font-black uppercase tracking-widest text-center animate-pulse text-purple-300">{lang === 'bn' ? 'শব্দ স্পেকট্রাম বিশ্লেষণ হচ্ছে' : 'Analyzing Sound Spectrum'}</p>
+                        </div>
+                      ) : (
+                        <div className="text-center p-6 space-y-4">
+                          <div className="w-16 h-16 rounded-full bg-purple-500/10 mx-auto flex items-center justify-center border border-purple-500/20 text-purple-400 group-hover:scale-110 transition-transform">
+                            <Mic size={26} strokeWidth={1.5} />
+                          </div>
+                          <p className="text-[10px] text-white/40 uppercase tracking-widest font-black leading-relaxed">{lang === 'bn' ? 'মনের কথা বলুন স্পেকট্রামে' : 'Calibrated Microphone Ready'}</p>
+                          <p className="text-[9px] text-white/40 max-w-[150px] mx-auto leading-normal">{lang === 'bn' ? '২ মিনিট পর্যন্ত কথা বলুন অরার সাথে।' : 'Up to 2 minutes capture reflecting throat chakra depth.'}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Microphone Controls */}
+                    <div className="w-full max-w-sm">
+                      {isRecordingVoice ? (
+                        <button 
+                          onClick={() => {
+                            setIsRecordingVoice(false);
+                            setScanStep('analyzing');
+                            submitAnalysis('voice');
+                          }}
+                          className="w-full h-14 rounded-[20px] bg-red-500 hover:bg-red-600 text-white font-extrabold uppercase tracking-widest text-xs transition-transform active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                        >
+                          <X size={15} />
+                          <span>{lang === 'bn' ? 'রেকর্ডিং থামান ও বিশ্লেষণ করুন' : 'Stop & Analyze Voice'}</span>
+                        </button>
+                      ) : scanStep === 'done' ? (
+                        <button 
+                          onClick={() => {
+                            setScanStep('idle');
+                            setIsRecordingVoice(true);
+                            setVoiceSecs(0);
+                          }}
+                          className="w-full h-14 rounded-[20px] bg-purple-500 hover:bg-purple-600 text-white font-extrabold uppercase tracking-widest text-xs transition-transform active:scale-95 cursor-pointer"
+                        >
+                          {lang === 'bn' ? 'পুনরায় ভয়েস রেকর্ড করুন' : 'Record voice note again'}
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => {
+                            setScanStep('idle');
+                            setIsRecordingVoice(true);
+                            setVoiceSecs(0);
+                            triggerNotification(lang === 'bn' ? "ভয়েস চেক-ইন শুরু হয়েছে কথা বলুন" : "Microphone active. Talk to Aura.", 'success');
+                          }}
+                          disabled={scannerLoading || scanStep === 'analyzing'}
+                          className="w-full h-14 rounded-[20px] bg-purple-500 hover:bg-purple-600 text-white font-extrabold uppercase tracking-widest text-xs transition-transform active:scale-95 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                        >
+                          <Mic size={15} />
+                          <span>{lang === 'bn' ? 'রেকর্ড শুরু করুন (২ মিনিট)' : 'Start Voice Record (2m)'}</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {scannerMode === 'text' && (
+                  <div className="my-4 flex flex-col items-center text-left max-w-lg mx-auto w-full">
+                    <p className="text-[10px] text-white/40 uppercase tracking-widest font-black leading-relaxed mb-2">Write Your Mind Energy Reflection (মনের কথা লিখুন)</p>
+                    <textarea 
+                      value={textScanInput}
+                      onChange={(e) => setTextScanInput(e.target.value)}
+                      placeholder={lang === 'bn' ? 'আপনার বর্তমান মনের অনুভূতি, মানসিক চাপ বা কোনো শক্তি প্রবাহ এখানে লিখুন অরা বিশ্লেষণ করবে...' : 'Type your current thoughts, energetic blocks, or raw feelings in detail here...'}
+                      rows={5}
+                      className="w-full bg-black/40 border border-white/10 rounded-2xl p-4 text-xs text-white placeholder-white/30 focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/40 resize-none font-serif mb-4"
+                    />
+
+                    {/* Submit Text Scanner button */}
+                    <button 
+                      onClick={() => {
+                        if (!textScanInput.trim()) {
+                          triggerNotification(lang === 'bn' ? "দয়া করে কিছু লিখুন!" : "Please write something first!", 'error');
+                          return;
+                        }
+                        setScanStep('analyzing');
+                        submitAnalysis('text', textScanInput);
+                      }}
+                      disabled={scannerLoading || !textScanInput.trim() || scanStep === 'analyzing'}
+                      className="w-full h-14 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-extrabold uppercase tracking-widest text-xs transition-transform flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 cursor-pointer"
+                    >
+                      <Sparkles size={14} />
+                      <span>{lang === 'bn' ? 'টেক্সট রেসোন্যান্স বিশ্লেষণ করুন' : 'Analyze Written Resonance'}</span>
+                    </button>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-center gap-2 max-w-sm mx-auto p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
+                    <CheckCircle className="text-sage w-5 h-5 flex-shrink-0" />
+                    <p className="text-[9px] uppercase tracking-wider font-black text-white/40 text-left leading-normal">{currentT.privacyDisclaimer}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Analysis Reflections output display cards */}
+              <div className="lg:col-span-5 space-y-6 flex flex-col justify-between">
+                <div className="liquid-glass rounded-[40px] p-6 sm:p-8 border border-white/5 flex-1 flex flex-col justify-between space-y-6">
+                  <div className="space-y-2">
+                    <div className="text-purple-400 font-black text-[10px] tracking-[0.4em] uppercase">{lang === 'bn' ? 'অরা ফিডব্যাক ডিস্ক' : 'Quantum Reflection'}</div>
+                    <h3 className="text-xl font-serif text-white font-bold">{lang === 'bn' ? 'আপনার আত্মিক প্রতিফলন' : 'Current Resonance Matrix'}</h3>
+                  </div>
+
+                  <div className="bg-white/[0.02] rounded-[28px] border border-white/5 p-6 min-h-[160px] flex items-center justify-center relative overflow-hidden">
+                    {scanReflection ? (
+                      <p className="text-sm tracking-wide text-white/90 leading-relaxed font-serif italic text-center">
+                        "{scanReflection}"
+                      </p>
+                    ) : (
+                      <div className="text-center text-white/30 space-y-2 max-w-xs">
+                        <Clock className="w-8 h-8 opacity-20 text-white mx-auto animate-pulse" />
+                        <p className="text-[10px] uppercase font-black tracking-widest">{lang === 'bn' ? 'আভা প্রতিফলন ফাঁকা' : 'RESPLENDENT ABSENCE'}</p>
+                        <p className="text-xs text-white/40">{lang === 'bn' ? 'একটি স্ক্যান সম্পন্ন করুন অথবা মনের ডায়েরি প্রতিফলিত করুন।' : 'Initiate the scanner using camera video, photo click, voice, or text comfort mode to visualize reflections.'}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* High Fidelity Interactive Audio Player with Dynamic Waveforms */}
+                  {scanReflection && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-purple-500/5 border border-purple-500/10 p-5 rounded-3xl space-y-4 text-left"
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="text-[10px] font-black tracking-widest uppercase text-purple-300 block">
+                            {lang === 'bn' ? 'অরা অডিও প্লেয়ার' : 'Aura Voice Companion'}
+                          </span>
+                          <span className="text-[9px] text-white/40 uppercase">
+                            {lang === 'bn' ? 'স্পিচ-টু-আভা মড্যুলেশন' : 'Real-time text-to-speech feedback'}
+                          </span>
+                        </div>
+                        {isSpeaking && (
+                          <div className="flex gap-1 items-end h-4 pr-1">
+                            {[2, 4, 1, 5, 2, 4, 1, 3, 2, 4].map((h, i) => (
+                              <motion.div 
+                                key={i} 
+                                animate={{ height: [4, h * 3, 4] }}
+                                transition={{ repeat: Infinity, duration: 0.5 + (i * 0.05), ease: "easeInOut" }}
+                                className="w-0.5 bg-purple-400 rounded-full" 
+                              />
+                            ))}
                           </div>
                         )}
-                     </div>
+                      </div>
 
-                     <div className="relative py-12 flex items-center justify-center">
-                        <motion.div whileHover={{ rotateY: 15, rotateX: -10, scale: 1.05 }} animate={{ scale: onCooldown ? 1 : [1, 1.05, 1], opacity: onCooldown ? 0.3 : 1 }} transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }} className="w-56 h-56 sm:w-80 sm:h-80 rounded-full border-4 border-white/10 flex items-center justify-center p-8 text-center relative shadow-[0_0_80px_rgba(163,230,53,0.15)] bg-white/[0.04]">
-                           <div className="absolute inset-4 rounded-full border border-sage/30 animate-pulse" />
-                           <div className="space-y-6">
-                             <motion.div animate={{ rotate: [0, 360] }} transition={{ duration: 20, repeat: Infinity, ease: "linear" }}><Sparkles className={`w-14 h-14 mx-auto ${onCooldown ? 'text-ink/20' : 'text-sage'}`} /></motion.div>
-                             <div className="text-[12px] font-black text-sage uppercase tracking-[0.5em]">{onCooldown ? currentT.systemLocked : currentT.readyToAnalyze}</div>
-                           </div>
-                        </motion.div>
-                     </div>
-
-                     <div className="mt-8">
-                       {!onCooldown && !userData?.sessionStartedAt && (
-                          <button onClick={startSession} className="w-full bg-sage text-black h-20 rounded-3xl font-black text-lg uppercase tracking-tight shadow-[0_20px_40px_rgba(163,230,53,0.3)] active:scale-95 group flex items-center justify-center gap-4 transition-all hover:scale-[1.02]">
-                            <Zap className="w-6 h-6 fill-current group-hover:animate-pulse" /> {currentT.sessionStart}
+                      <div className="flex gap-2">
+                        {isSpeaking ? (
+                          <button
+                            onClick={() => {
+                              window.speechSynthesis.cancel();
+                              setIsSpeaking(false);
+                            }}
+                            className="flex-1 py-3.5 px-4 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 duration-300"
+                          >
+                            <VolumeX size={15} />
+                            <span>{lang === 'bn' ? 'ভয়েস বন্ধ করুন' : 'Mute Voice'}</span>
                           </button>
-                       )}
-                       {userData?.sessionStartedAt && (
-                         <div className="space-y-4 sm:space-y-6">
-                            {/* Progressive Disclosure: Prioritize Text Journaling First */}
-                            <button onClick={() => triggerScan('text')} className="w-full bg-white/10 p-5 sm:p-8 rounded-3xl border border-white/10 hover:border-sage transition-all text-left flex items-center justify-between group">
-                              <div className="flex items-center gap-4 sm:gap-6">
-                                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-sage/20 rounded-2xl flex items-center justify-center text-sage group-hover:scale-110 transition-transform"><MessageSquare className="w-6 h-6 sm:w-8 sm:h-8" /></div>
-                                <div>
-                                  <div className="text-[8px] sm:text-[10px] font-black text-sage uppercase tracking-widest mb-1">{currentT.textJournal}</div>
-                                  <div className="text-lg sm:text-xl font-serif font-black">{lang === 'bn' ? 'মনের কথা শেয়ার করুন' : 'Share your thoughts'}</div>
-                                </div>
-                              </div>
-                              <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 text-white/20 group-hover:translate-x-2 transition-transform" />
-                            </button>
-
-                            {/* Unlocked Features - Simplified for User Request */}
-                            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                                <button onClick={() => triggerScan('face')} className="bg-white/10 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-white/10 hover:border-sage transition-all text-center group">
-                                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-sage/20 rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 text-sage group-hover:scale-110 transition-transform"><Camera className="w-4 h-4 sm:w-5 sm:h-5" /></div>
-                                  <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-tight text-white/80">{currentT.faceAnalysis}</div>
-                                </button>
-                                <button onClick={() => triggerScan('voice')} className="bg-white/10 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-white/10 hover:border-sage transition-all text-center group">
-                                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-sage/20 rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 text-sage group-hover:scale-110 transition-transform"><Mic className="w-4 h-4 sm:w-5 sm:h-5" /></div>
-                                  <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-tight text-white/80">{currentT.voiceTone}</div>
-                                </button>
-                            </div>
-                         </div>
-                       )}
-                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-                     <div className="bg-white/5 p-8 rounded-[36px] border border-white/10 group hover:border-sage/40 transition-colors relative overflow-hidden">
-                        <motion.div 
-                          animate={{ rotate: 360 }} 
-                          transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                          className="absolute -right-4 -top-4 w-20 h-20 bg-clay/5 rounded-full border border-clay/10 border-dashed"
-                        />
-                        <Flame className="w-8 h-8 text-clay mb-6 group-hover:scale-110 transition-transform relative z-10" />
-                        <div className="text-3xl font-serif font-black mb-1 relative z-10">{userData.streak} <span className="text-sm font-sans text-white/20">{lang === 'bn' ? 'দিন' : 'Days'}</span></div>
-                        <div className="text-[10px] font-black text-clay uppercase tracking-widest relative z-10">{currentT.streak}</div>
-                     </div>
-                     <div className="bg-white/5 p-8 rounded-[36px] border border-white/10 group hover:border-sage/40 transition-colors">
-                        <Trophy className="w-8 h-8 text-sage mb-6 group-hover:rotate-12 transition-transform" />
-                        <div className="text-3xl font-serif font-black mb-1">{userData.points}</div>
-                        <div className="text-[10px] font-black text-sage uppercase tracking-widest">{currentT.points}</div>
-                     </div>
-                     <div className="bg-white/5 p-8 rounded-[36px] border border-white/10 group hover:border-sage/40 transition-colors hidden sm:block">
-                        <Star className="w-8 h-8 text-purple-400 mb-6 group-hover:scale-125 transition-transform" />
-                        <div className="text-3xl font-serif font-black mb-1">{userData.badges.length}</div>
-                        <div className="text-[10px] font-black text-purple-400 uppercase tracking-widest">{currentT.badges}</div>
-                     </div>
-                  </div>
-                </div>
-
-                <div className="space-y-8 lg:sticky lg:top-32">
-                   <div className="bg-white/10 p-8 rounded-[40px] text-white relative overflow-hidden shadow-2xl border border-white/5">
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-sage/10 blur-[60px] rounded-full" />
-                      <h3 className="text-xl font-serif italic mb-3 text-white relative z-10">"{currentT.quote}"</h3>
-                      <p className="text-xs text-white/70 leading-relaxed mb-8 relative z-10 font-medium uppercase tracking-tight">{currentT.sidebarDesc}</p>
-                      <div className="flex items-center gap-4 p-5 bg-white/5 rounded-3xl border border-white/5 backdrop-blur-xl">
-                        <div className="w-12 h-12 rounded-2xl bg-sage flex items-center justify-center shadow-lg"><Brain className="w-6 h-6 text-black" /></div>
-                        <div>
-                          <div className="text-[10px] font-black text-sage uppercase tracking-widest mb-0.5">{currentT.nextGoal}</div>
-                          <div className="text-sm font-black tracking-tight">{currentT.unlockingVoice}</div>
-                        </div>
-                      </div>
-                   </div>
-                    <div className="bg-white/5 p-8 rounded-[40px] border border-white/10 space-y-8">
-                       <h4 className="text-[12px] font-black text-sage uppercase tracking-[0.3em] flex items-center gap-2">
-                         <CheckCircle2 className="w-4 h-4" /> {currentT.guideTitle}
-                       </h4>
-                       <div className="space-y-6">
-                          {[currentT.guideStep1, currentT.guideStep2, currentT.guideStep3, currentT.guideStep4].map((step, i) => (
-                             <div key={i} className="flex gap-4 group">
-                                <div className="w-6 h-6 rounded-lg bg-sage/10 text-sage flex items-center justify-center font-black text-[10px] shrink-0 border border-sage/20 group-hover:bg-sage group-hover:text-black transition-colors">{i+1}</div>
-                                <p className="text-xs text-white/50 leading-relaxed font-medium group-hover:text-white transition-colors">{step}</p>
-                             </div>
-                          ))}
-                       </div>
-                    </div>
-                </div>
-              </motion.div>
-            )}
-
-            {activeTab === 'history' && (
-              <motion.div key="history-view" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }} className="space-y-12 max-w-5xl mx-auto">
-                {history.length > 0 && (
-                  <div className="bg-white/5 p-8 rounded-[48px] border border-white/10 overflow-hidden shadow-2xl backdrop-blur-3xl">
-                    <div className="flex justify-between items-center mb-8">
-                       <div>
-                         <h2 className="text-4xl font-serif font-black tracking-tighter uppercase mb-2">{currentT.historyTitle}</h2>
-                         <div className="text-[10px] font-black text-sage uppercase tracking-widest">{currentT.moodTrends}</div>
-                       </div>
-                       <div className="flex gap-2">
-                          {['Focus', 'Calm', 'Stress'].map(label => (
-                            <div key={label} className="text-[8px] font-black uppercase tracking-widest px-3 py-1.5 bg-white/5 rounded-lg text-white/40 border border-white/5">{label}</div>
-                          ))}
-                       </div>
-                    </div>
-                    <div className="h-[300px] w-full">
-                       <ResponsiveContainer width="100%" height="100%">
-                         <AreaChart data={history.slice(0, 7).reverse().map((h, i) => ({ 
-                           name: i + 1, 
-                           val: h.type === 'face' ? 85 : h.type === 'voice' ? 65 : 45 
-                         }))}>
-                           <defs>
-                             <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                               <stop offset="5%" stopColor="#a3e635" stopOpacity={0.3}/>
-                               <stop offset="95%" stopColor="#a3e635" stopOpacity={0}/>
-                             </linearGradient>
-                           </defs>
-                           <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                           <XAxis dataKey="name" hide />
-                           <YAxis hide domain={[0, 100]} />
-                           <Tooltip 
-                            contentStyle={{ background: '#0a0f0d', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: '16px' }}
-                            itemStyle={{ color: '#a3e635', fontWeight: 'bold', fontSize: '12px' }}
-                           />
-                           <Area type="monotone" dataKey="val" stroke="#a3e635" fillOpacity={1} fill="url(#colorVal)" strokeWidth={4} />
-                         </AreaChart>
-                       </ResponsiveContainer>
-                    </div>
-                  </div>
-                )}
-
-                <div className="max-w-3xl mx-auto space-y-6">
-                {history.length === 0 ? (
-                  <div className="bg-white/5 p-16 rounded-[48px] border border-white/10 text-center space-y-6 backdrop-blur-3xl">
-                    <History className="w-16 h-16 text-white/10 mx-auto" />
-                    <p className="text-white/20 font-black uppercase tracking-[0.2em]">{currentT.noRecords}</p>
-                  </div>
-                ) : (
-                  history.map((record, index) => (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} key={record.id} className="bg-white/5 p-8 rounded-[36px] border border-white/10 flex items-start gap-6 group hover:border-sage/40 transition-all backdrop-blur-3xl relative">
-                      <button 
-                        onClick={() => deleteHistoryRecord(record.id)}
-                        className="absolute top-4 right-4 p-2 opacity-0 group-hover:opacity-100 hover:bg-red-500/10 text-white/20 hover:text-red-400 rounded-full transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                      <div className="w-14 h-14 bg-sage/10 rounded-2xl flex items-center justify-center text-sage shrink-0 group-hover:scale-110 transition-transform">
-                        {record.type === 'face' ? <Camera className="w-6 h-6" /> : record.type === 'voice' ? <Mic className="w-6 h-6" /> : <MessageSquare className="w-6 h-6" />}
-                      </div>
-                      <div className="flex-1 space-y-3">
-                        <div className="flex justify-between items-center text-[10px] font-black text-sage uppercase tracking-[0.3em]">
-                           <div className="flex items-center gap-2"><Clock className="w-3.5 h-3.5" /> {new Date(record.timestamp?.toDate ? record.timestamp.toDate() : record.timestamp).toLocaleString(lang === 'bn' ? 'bn-BD' : 'en-US')}</div>
-                           <div className="flex items-center gap-2"><CheckCircle className="w-3.5 h-3.5" /> ANALYZED</div>
-                        </div>
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-white/30">{currentT.emotion}</span>
-                          <p className="text-xl italic text-white font-serif leading-relaxed line-clamp-3">"{record.reflection}"</p>
-                        </div>
+                        ) : (
+                          <button
+                            onClick={() => speakNow(scanReflection)}
+                            className="flex-1 py-3.5 px-4 rounded-2xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-200 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-purple-500/10 active:scale-95 duration-300"
+                          >
+                            <Volume2 size={15} className="animate-pulse" />
+                            <span>{lang === 'bn' ? 'ভয়েস শুনুন' : 'Hear Aura Voice'}</span>
+                          </button>
+                        )}
                       </div>
                     </motion.div>
-                  ))
-                )}
+                  )}
+
+                  <div className="space-y-4">
+                    <div className="text-[9px] font-black uppercase text-white/30 tracking-widest">{lang === 'bn' ? 'উপার্জিত ট্রাস্ট ব্যাজ সমূহ:' : 'UNLOCKED TROPHIES:'}</div>
+                    <div className="flex flex-wrap gap-2">
+                      {badges.map((badge, idx) => (
+                        <div key={idx} className="flex items-center gap-1.5 bg-purple-500/10 border border-purple-500/20 text-purple-300 px-3 py-1.5 rounded-xl text-[9px] font-bold uppercase tracking-wider">
+                          <Award size={11} />
+                          <span>{badge}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
+              </div>
               </motion.div>
-            )}
+            )
+          )}
 
-            {activeTab === 'exercises' && (
-              <motion.div key="exercises-view" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                 {exercises.map((ex, i) => (
-                   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} key={ex.id} className="bg-white/5 p-10 rounded-[48px] border border-white/10 group hover:border-sage/40 transition-all flex flex-col h-full backdrop-blur-3xl shadow-2xl">
-                     <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-8 transition-all group-hover:scale-110 shadow-lg ${ex.color}`}>{ex.icon}</div>
-                     <h3 className="text-xl font-serif font-black mb-3 tracking-tight">{lang === 'bn' ? ex.title : ex.title}</h3>
-                     <div className="text-[10px] font-black text-sage uppercase tracking-[0.3em] mb-6 flex items-center gap-2"><Clock className="w-4 h-4" /> {lang === 'bn' ? ex.duration : ex.duration.replace('মিনিট', 'MIN')}</div>
-                     <p className="text-sm text-white/40 leading-relaxed mb-10 flex-1 font-medium uppercase tracking-tight">{lang === 'bn' ? ex.description : ex.descriptionEn}</p>
-                     <button onClick={() => startExercise(ex)} className="w-full h-16 rounded-[24px] bg-white/5 text-white font-black text-[12px] uppercase tracking-widest hover:bg-sage hover:text-black transition-all shadow-inner active:scale-95">{lang === 'bn' ? 'সেশন শুরু করুন' : 'START SESSION'}</button>
-                   </motion.div>
-                 ))}
-                 <div className="bg-white/[0.02] p-10 rounded-[48px] border border-dashed border-white/10 flex flex-col items-center justify-center text-center space-y-6">
-                    <Sparkles className="w-12 h-12 text-white/10" />
-                    <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.4em]">{currentT.exercisePlaceholder}</p>
-                 </div>
-              </motion.div>
-            )}
-
-            {activeTab === 'coach' && (
-              <motion.div key="coach-view" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="max-w-4xl mx-auto h-[600px] sm:h-[700px] flex flex-col bg-white/[0.02] rounded-[32px] sm:rounded-[56px] border border-white/5 overflow-hidden backdrop-blur-3xl shadow-[0_50px_100px_rgba(0,0,0,0.5)] relative">
-                 <div className="absolute top-0 right-0 w-96 h-96 bg-sage/5 blur-[150px] pointer-events-none" />
-                 <div className="p-6 sm:p-10 border-b border-white/5 flex items-center justify-between bg-white/[0.01]">
-                    <div className="flex items-center gap-4 sm:gap-6">
-                       <motion.div 
-                         animate={{ 
-                           boxShadow: ["0 0 0px #a3e635", "0 0 40px #a3e635", "0 0 0px #a3e635"],
-                           scale: [1, 1.05, 1]
-                         }}
-                         transition={{ duration: 4, repeat: Infinity }}
-                         className="w-12 h-12 sm:w-16 sm:h-16 bg-sage rounded-[16px] sm:rounded-[24px] flex items-center justify-center text-black shadow-2xl"
-                       >
-                         <Brain className="w-6 h-6 sm:w-8 sm:h-8" />
-                       </motion.div>
-                       <div>
-                           <h2 className="text-lg sm:text-xl font-serif font-black tracking-tighter text-white">{(currentT as any).auraName}</h2>
-                           <div className="flex items-center gap-2">
-                             <div className="w-1.5 h-1.5 bg-sage rounded-full animate-pulse" />
-                             <div className="text-[8px] sm:text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">{(currentT as any).auraStatus}</div>
-                           </div>
-                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                       <button onClick={() => setChatMessages([])} className="p-2 sm:p-3 hover:bg-white/5 rounded-2xl text-white/20 transition-all"><Trash2 className="w-4 h-4 sm:w-5 sm:h-5" /></button>
-                    </div>
-                 </div>
-                 <div className="flex-1 overflow-y-auto p-6 sm:p-10 space-y-6 sm:space-y-8 flex flex-col no-scrollbar">
-                    {chatMessages.length === 0 && (
-                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 flex flex-col items-center justify-center text-center space-y-8">
-                         <div className="space-y-4">
-                            <Sparkles className="w-16 h-16 text-sage/20 mx-auto" />
-                            <p className="font-serif italic text-xl text-white/40 max-w-md">"{(currentT as any).auraIntro}"</p>
-                         </div>
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-lg">
-                           {[
-                             lang === 'bn' ? 'আজ আমার খুব খুশি লাগছে' : 'I am feeling very happy today',
-                             lang === 'bn' ? 'কাজের চাপে আমি খুব ক্লান্ত' : 'Work is making me exhausted',
-                             lang === 'bn' ? 'কিভাবে মন শান্ত রাখব?' : 'How to keep mind calm?',
-                             lang === 'bn' ? 'পজিটিভ থাকার উপায় কি?' : 'Ways to stay positive?'
-                           ].map(text => (
-                             <button key={text} onClick={() => { setCoachInput(text); }} className="p-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white/50 hover:bg-white/10 hover:text-white transition-all text-left">
-                               {text}
-                             </button>
-                           ))}
-                         </div>
-                      </motion.div>
-                    )}
-                    {chatMessages.map((msg, i) => (
-                      <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`max-w-[85%] p-8 rounded-[40px] relative ${msg.role === 'user' ? 'bg-sage text-black ml-auto rounded-tr-sm shadow-2xl' : 'bg-white/5 text-white mr-auto rounded-tl-sm border border-white/5 shadow-inner'}`}>
-                         <p className="text-base font-medium leading-relaxed tracking-tight">{msg.text}</p>
-                         {msg.role === 'assistant' && <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-sage/20 hidden lg:flex items-center justify-center"><Sparkles className="w-4 h-4 text-sage" /></div>}
-                      </motion.div>
-                    ))}
-                    {isChatting && (
-                      <div className="p-8 bg-white/5 rounded-[40px] w-24 flex gap-3 justify-center mr-auto animate-pulse">
-                        <div className="w-2 h-2 bg-sage rounded-full" />
-                        <div className="w-2 h-2 bg-sage rounded-full" />
-                        <div className="w-2 h-2 bg-sage rounded-full" />
-                      </div>
-                    )}
-                 </div>
-
-                 {/* Nature Sounds Control */}
-                 <div className="px-10 py-6 flex flex-wrap gap-4 bg-white/[0.01] border-t border-white/5">
-                    <button 
-                      onClick={() => toggleSound('rain')} 
-                      className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSound === 'rain' ? 'bg-blue-500 text-white shadow-xl' : 'bg-white/5 text-white/40 hover:text-white'}`}
-                    >
-                      <CloudRain className="w-5 h-5" /> {lang === 'bn' ? 'বৃষ্টি' : 'RAIN'}
-                    </button>
-                    <button 
-                      onClick={() => toggleSound('forest')} 
-                      className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSound === 'forest' ? 'bg-green-600 text-white shadow-xl' : 'bg-white/5 text-white/40 hover:text-white'}`}
-                    >
-                      <Trees className="w-5 h-5" /> {lang === 'bn' ? 'বন' : 'FOREST'}
-                    </button>
-                    <button 
-                      onClick={() => toggleSound('ocean')} 
-                      className={`flex items-center gap-3 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSound === 'ocean' ? 'bg-cyan-500 text-white shadow-xl' : 'bg-white/5 text-white/40 hover:text-white'}`}
-                    >
-                      <Waves className="w-5 h-5" /> {(currentT as any).oceanSound}
-                    </button>
-                 </div>
-
-                 <div className="p-10 border-t border-white/5 bg-black/20">
-                    <div className="flex gap-6">
-                      <input 
-                        value={coachInput} 
-                        onChange={(e) => setCoachInput(e.target.value)} 
-                        onKeyDown={(e) => e.key === 'Enter' && askCoach()}
-                        placeholder={currentT.coachPlaceholder} 
-                        className="flex-1 bg-white/5 border border-white/10 rounded-[32px] px-8 py-6 text-xl text-white placeholder:text-white/20 focus:outline-none focus:border-sage/40 transition-all shadow-inner"
-                      />
-                      <button onClick={askCoach} className="bg-sage text-black px-10 rounded-[32px] font-black uppercase text-xs tracking-[0.2em] hover:scale-[1.02] active:scale-95 transition-all shadow-[0_20px_40px_rgba(163,230,53,0.2)]">{currentT.send}</button>
-                    </div>
-                 </div>
-              </motion.div>
-            )}
-
-            {activeTab === 'games' && (
-              <motion.div key="games-view" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="space-y-12">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          {activeTab === 'coach' && (
+            !user ? (
+              <LoginRequiredView tab="coach" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} />
+            ) : (
+              <motion.div 
+                key="coach-pane"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="liquid-glass rounded-[40px] p-6 sm:p-8 border border-white/5 max-w-4xl mx-auto flex flex-col justify-between min-h-[500px]"
+              >
+              {/* Header section control */}
+              <div className="flex items-center justify-between border-b border-white/5 pb-5 mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-sage/10 flex items-center justify-center border border-sage/20 text-sage">
+                    <Compass className="animate-spin-slow" size={20} />
+                  </div>
                   <div>
-                    <h2 className="text-4xl font-serif font-black tracking-tighter uppercase mb-2">{(currentT as any).gamesTitle}</h2>
-                    <div className="text-[10px] font-black text-sage uppercase tracking-widest">{(currentT as any).gamesSubtitle}</div>
-                  </div>
-                  <div className="flex gap-4">
-                     <div className="px-6 py-3 bg-white/5 rounded-2xl border border-white/10 flex items-center gap-3">
-                        <Trophy className="w-5 h-5 text-sage" />
-                        <span className="text-xs font-black uppercase tracking-widest text-white/40">{(currentT as any).score}: {gameScore}</span>
-                     </div>
+                    <h3 className="font-serif text-lg font-bold text-white uppercase tracking-tight">Aura Companion Coach</h3>
+                    <p className="text-[9px] text-sage font-black uppercase tracking-widest">{lang === 'bn' ? 'আধ্যাত্মিক মেন্টর' : 'Spiritual sanctuary guide'}</p>
                   </div>
                 </div>
 
-                {!activeGame ? (
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {/* Voice speak toggle buttons */}
+                <button 
+                  onClick={() => setAutoSpeak(!autoSpeak)}
+                  className={`p-2.5 rounded-xl transition-all border ${
+                    autoSpeak ? 'bg-sage/10 text-sage border-sage/25' : 'bg-white/5 text-white/50 border-white/5'
+                  }`}
+                  title={autoSpeak ? currentT.speakMute : currentT.speakUnmute}
+                >
+                  {autoSpeak ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                </button>
+              </div>
+
+              {/* Chat timeline feed */}
+              <div className="flex-1 overflow-y-auto space-y-4 max-h-[350px] p-2 bg-black/10 rounded-2xl scrollbar-thin">
+                {/* Seed Welcome companion greeting */}
+                <div className="flex gap-3 max-w-[85%] text-left mr-auto">
+                  <div className="w-8 h-8 rounded-full bg-sage/10 flex items-center justify-center flex-shrink-0 text-sage text-xs">A</div>
+                  <div className="p-4 rounded-3xl rounded-tl-sm bg-white/5 border border-white/5 space-y-1">
+                    <p className="text-xs text-white/45 font-black uppercase tracking-widest">Aura</p>
+                    <p className="text-xs text-white/80 leading-relaxed font-serif italic">"{currentT.coachWelcome}"</p>
+                  </div>
+                </div>
+
+                {/* Interactive chats messages log */}
+                {coachMessages.map((msg, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`flex gap-3 max-w-[85%] text-left ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs ${
+                      msg.role === 'user' ? 'bg-purple-500/20 text-purple-300' : 'bg-sage/10 text-sage'
+                    }`}>
+                      {msg.role === 'user' ? 'U' : 'A'}
+                    </div>
+                    
+                    <div className={`p-4 rounded-3xl space-y-1 ${
+                      msg.role === 'user' 
+                        ? 'bg-sage text-black rounded-tr-sm shadow-xl shadow-sage/5 font-medium' 
+                        : 'bg-white/5 border border-white/5 rounded-tl-sm text-white/90 font-serif italic'
+                    }`}>
+                      <p className={`text-[9px] font-black uppercase tracking-widest ${msg.role === 'user' ? 'text-black/50' : 'text-white/45'}`}>
+                        {msg.role === 'user' ? 'YOU' : 'AURA'}
+                      </p>
+                      <p className="text-xs leading-relaxed">{msg.text}</p>
+                    </div>
+                  </div>
+                ))}
+
+                {coachLoading && (
+                  <div className="flex gap-3 mr-auto items-center text-white/40 text-[10px] font-black uppercase tracking-widest">
+                    <RefreshCw className="animate-spin text-sage w-4 h-4" />
+                    <span>Thinking...</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Chat action footer input bar */}
+              <div className="flex gap-2.5 mt-5 pt-4 border-t border-white/5">
+                <input
+                  type="text"
+                  value={coachInput}
+                  onChange={(e) => setCoachInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') submitCoachChat(); }}
+                  disabled={coachLoading}
+                  placeholder={currentT.coachPlaceholder}
+                  className="flex-1 h-14 bg-white/5 border border-white/10 rounded-2xl px-5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-sage/40 transition-colors"
+                />
+                <button
+                  onClick={submitCoachChat}
+                  disabled={coachLoading || !coachInput.trim()}
+                  className="w-14 h-14 bg-sage text-black rounded-2xl flex items-center justify-center shadow-lg shadow-sage/10 transition-transform hover:scale-102 active:scale-95 disabled:opacity-45 disabled:pointer-events-none cursor-pointer"
+                >
+                  <Send size={16} strokeWidth={2.5} />
+                </button>
+              </div>
+              </motion.div>
+            )
+          )}
+
+          {activeTab === 'journal' && (
+            !user ? (
+              <LoginRequiredView tab="journal" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} />
+            ) : (
+              <motion.div 
+                key="journal-pane"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="grid grid-cols-1 lg:grid-cols-12 gap-8"
+              >
+              {/* Write log parchment */}
+              <div className="lg:col-span-6 liquid-glass rounded-[40px] p-6 sm:p-8 border border-white/5 flex flex-col justify-between space-y-6 min-h-[420px]">
+                <div className="space-y-2">
+                  <div className="text-sage font-black text-[10px] tracking-[0.4em] uppercase">{currentT.journalHeading}</div>
+                  <h3 className="text-xl font-serif text-white font-bold">{lang === 'bn' ? 'নতুন প্রতিফলন খোদাই করুন' : 'Etch Mindful Diary Input'}</h3>
+                </div>
+
+                <div className="flex-1 min-h-[180px]">
+                  <textarea
+                    value={journalInput}
+                    onChange={(e) => setJournalInput(e.target.value)}
+                    placeholder={currentT.journalPlaceholder}
+                    disabled={journalLoading}
+                    className="w-full h-full bg-white/[0.02] border border-white/5 rounded-3xl p-5 text-sm font-serif italic text-white placeholder-white/25 focus:outline-none focus:border-sage/20 resize-none leading-relaxed transition-colors"
+                  />
+                </div>
+
+                <button
+                  onClick={handleImprintJournal}
+                  disabled={journalLoading || !journalInput.trim()}
+                  className="w-full h-14 bg-white text-black font-extrabold uppercase tracking-widest text-xs rounded-2xl flex items-center justify-center gap-2 hover:bg-white/90 hover:scale-[1.01] active:scale-95 transition-all disabled:opacity-40 disabled:pointer-events-none cursor-pointer"
+                >
+                  {journalLoading ? <RefreshCw className="animate-spin text-black w-4 h-4" /> : <Plus size={14} strokeWidth={2.5} />}
+                  <span>{currentT.journalAddBtn}</span>
+                </button>
+              </div>
+
+              {/* Sentiment chart analysis and past records list */}
+              <div className="lg:col-span-6 space-y-6">
+                {/* Small graph timeline */}
+                <div className="liquid-glass rounded-[40px] p-6 border border-white/5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-serif text-sm font-bold uppercase tracking-wide">{lang === 'bn' ? 'মানসিক স্পন্দন প্রবাহ' : 'Aura Resonance Wave'}</h4>
+                      <p className="text-[9px] text-white/40 uppercase tracking-widest">{lang === 'bn' ? 'রিয়েল-টাইম মুড ইনসাইট' : 'Mood analytics timeline'}</p>
+                    </div>
+                    <span className="text-[10px] font-black text-sage border border-sage/20 px-2.5 py-1 rounded">HEALTHY WAVE</span>
+                  </div>
+                  
+                  {/* Dynamic Area Recharts Chart */}
+                  <div className="h-28 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={journalHistory.length > 0 ? [...journalHistory].reverse() : [{ score: 50 }, { score: 65 }, { score: 55 }, { score: 80 }]}>
+                        <defs>
+                          <linearGradient id="colorWave" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#acdf87" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#acdf87" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <Area type="monotone" dataKey="score" stroke="#acdf87" strokeWidth={1.5} fillOpacity={1} fill="url(#colorWave)" />
+                        <Tooltip contentStyle={{ background: '#050508', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '9px' }} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Log history list items */}
+                <div className="liquid-glass rounded-[40px] p-6 sm:p-8 border border-white/5 space-y-4 max-h-[290px] overflow-y-auto">
+                  <h4 className="font-serif text-sm font-bold uppercase text-white tracking-widest mb-2 border-b border-white/5 pb-2">{currentT.historyTitle}</h4>
+                  
+                  {journalHistory.length === 0 ? (
+                    <div className="text-center py-6 text-white/30 space-y-1">
+                      <Clock className="w-5 h-5 mx-auto opacity-20" />
+                      <p className="text-[10px] uppercase font-black tracking-wider leading-relaxed">{currentT.noHistory}</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {journalHistory.map((item) => (
+                        <div key={item.id} className="flex gap-4 items-center justify-between p-4 bg-white/[0.02] border border-white/5 hover:border-white/10 rounded-2xl transition-all">
+                          <div className="flex-1 space-y-1 text-left">
+                            <p className="text-xs text-white/80 leading-relaxed font-serif italic truncate">"{item.reflection}"</p>
+                            <p className="text-[8px] uppercase tracking-widest text-white/40 font-black">{new Date(item.timestamp).toLocaleDateString()} via {item.type}</p>
+                          </div>
+                          
+                          <button 
+                            onClick={() => handleDeleteItem(item.id)}
+                            className="p-2.5 rounded-xl text-white/20 hover:text-red-400 hover:bg-white/5 transition-colors cursor-pointer"
+                            title="Purge reflection record"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              </motion.div>
+            )
+          )}
+
+          {activeTab === 'playground' && (
+            !user ? (
+              <LoginRequiredView tab="playground" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} />
+            ) : (
+              <motion.div 
+                key="playground-pane"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-center md:text-left text-white max-w-7xl mx-auto px-4"
+              >
+              {/* Column 1: Cadence breathing assistant & 9 Guided Exercises (span 5) */}
+              <div className="lg:col-span-5 liquid-glass rounded-[32px] p-6 border border-white/10 flex flex-col justify-between items-center space-y-6">
+                <div className="space-y-2 text-center w-full">
+                  <div className="text-sage font-black text-[10px] tracking-[0.4em] uppercase">{currentT.focusBreathing}</div>
+                  <h3 className="text-xl font-serif text-white font-bold">{lang === 'bn' ? 'কোয়ান্টাম ব্রিদিং মন্ডল' : 'Breathing Cadence Harmony'}</h3>
+                  <p className="text-xs text-white/50 max-w-sm mx-auto">{lang === 'bn' ? '৯টি পবিত্র প্রাণায়াম চক্রের সাহায্যে আপনার আত্মিক তরঙ্গ স্থির করুন।' : 'Calibrate 9 sacred styles of pranayama and respiratory cadences.'}</p>
+                </div>
+
+                {/* Interactive Breathing Ring Helper */}
+                <div className="relative w-40 h-40 sm:w-44 sm:h-44 flex items-center justify-center my-2">
+                  <motion.div 
+                    animate={{
+                      scale: breathingStep === 'inhale' ? 1.45 : breathingStep === 'hold' ? 1.45 : breathingStep === 'exhale' ? 0.95 : 0.85,
+                      opacity: breathingStep === 'inhale' ? 0.35 : breathingStep === 'hold' ? 0.65 : breathingStep === 'exhale' ? 0.25 : 0.15
+                    }}
+                    transition={{ duration: guidedExercises[activeExerciseIdx]?.inhale || 4, ease: "easeInOut" }}
+                    className={`absolute inset-0 bg-sage rounded-full blur-2xl ${
+                      breathingStep === 'inhale' ? 'bg-sage' : breathingStep === 'hold' ? 'bg-purple-500' : breathingStep === 'exhale' ? 'bg-blue-400' : 'bg-neutral-600'
+                    }`}
+                  />
+
+                  <motion.div 
+                    animate={{
+                      scale: breathingStep === 'inhale' ? 1.15 : breathingStep === 'hold' ? 1.15 : 0.9
+                    }}
+                    transition={{ duration: 4, ease: "easeInOut" }}
+                    className="absolute inset-2 border border-sage/30 rounded-full flex items-center justify-center"
+                  />
+
+                  <div className="z-10 text-center space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-sage border border-sage/20 px-3 py-1 bg-black/75 rounded-full">
+                      {breathingStep === 'inhale' ? (lang === 'bn' ? 'শ্বাস নিন' : 'INHALE') : 
+                       breathingStep === 'hold' ? (lang === 'bn' ? 'ধরে রাখুন' : 'HOLD') : 
+                       breathingStep === 'exhale' ? (lang === 'bn' ? 'শ্বাস ছাড়ুন' : 'EXHALE') : 
+                       (lang === 'bn' ? 'বিশ্রাম' : 'REST')}
+                    </span>
+                    <div className="text-4xl font-extrabold text-white">{breathingSecs}s</div>
+                  </div>
+                </div>
+
+                {/* Selected Exercise Detail */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 w-full text-center space-y-1">
+                  <p className="text-xs font-black text-sage">
+                    {lang === 'bn' ? guidedExercises[activeExerciseIdx].nameBn : guidedExercises[activeExerciseIdx].nameEn}
+                  </p>
+                  <p className="text-[10px] text-white/50">
+                    {lang === 'bn' ? guidedExercises[activeExerciseIdx].descBn : guidedExercises[activeExerciseIdx].descEn}
+                  </p>
+                  <p className="text-[9px] text-[#A7C7E7] font-serif italic mt-1 bg-indigo-500/10 py-1 px-2 rounded-md">
+                    ✨ {lang === 'bn' ? guidedExercises[activeExerciseIdx].benefitBn : guidedExercises[activeExerciseIdx].benefitEn}
+                  </p>
+                </div>
+
+                {/* 9 Types of Guided Exercises List Selector */}
+                <div className="w-full space-y-2">
+                  <div className="text-[10px] uppercase tracking-wider font-extrabold text-white/40 text-center">
+                    {lang === 'bn' ? "৯টি নিশ্বাস অনুশীলন ধরণ চয়ন করুন" : "Browse 9 Respiratory Dimensions"}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[220px] overflow-y-auto pr-1 text-left select-none">
+                    {guidedExercises.map((ex, index) => (
+                      <button
+                        key={ex.id}
+                        onClick={() => {
+                          setActiveExerciseIdx(index);
+                          setBreathingStep('inhale');
+                          setBreathingSecs(ex.inhale);
+                          const speakText = lang === 'bn' 
+                            ? `আসুন শুরু করি ${ex.nameBn}।` 
+                            : `Let us begin ${ex.nameEn} training. Adjust your posture and soul.`;
+                          if (autoSpeak) {
+                            speakNow(speakText);
+                          }
+                          triggerNotification(lang === 'bn' ? `${ex.nameBn} সক্রিয় হয়েছে` : `${ex.nameEn} active!`, 'success');
+                        }}
+                        className={`p-2 rounded-xl border text-left flex flex-col justify-between cursor-pointer transition-all ${
+                          activeExerciseIdx === index 
+                            ? 'bg-sage text-black border-sage font-semibold shadow-lg shadow-sage/10' 
+                            : 'bg-white/5 border-white/5 hover:bg-white/10 text-white/80'
+                        }`}
+                      >
+                        <span className="text-[9px] font-extrabold tracking-wide truncate">
+                          {lang === 'bn' ? ex.nameBn : ex.nameEn}
+                        </span>
+                        <span className={`text-[8px] mt-1 opacity-70 ${activeExerciseIdx === index ? 'text-black/80' : 'text-[#A7C7E7]'}`}>
+                          {ex.inhale}-{ex.hold}-{ex.exhale}{ex.rest > 0 ? `-${ex.rest}` : ''}s
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Column 2: Sensory & Brain Balance Playground - Sequentially Unlocked Games (span 7) */}
+              <div className="lg:col-span-7 liquid-glass rounded-[32px] p-6 border border-white/10 flex flex-col justify-between items-center space-y-6 relative overflow-hidden">
+                
+                {/* Header Information */}
+                <div className="text-center w-full space-y-1">
+                  <div className="text-purple-400 font-extrabold text-[10px] tracking-[0.4em] uppercase">{lang === 'bn' ? 'ব্রেইন ব্যালেন্স ও একাগ্রতা' : 'Brain Balance Core'}</div>
+                  <h3 className="text-xl font-serif text-white font-bold">{lang === 'bn' ? 'নিউরন ও আত্মিক ফোকাস গেমস' : 'Hemisphere Synapse Harmonizer'}</h3>
+                  <p className="text-xs text-white/50 max-w-sm mx-auto">
+                    {lang === 'bn' ? '৩ বার করে খেলুন এবং পরবর্তী চ্যালেঞ্জ আনলক করুন কসমিক ক্ষমতায়।' : 'Train left/right brain balance. Complete 3 sessions of each step sequentially to unlock.'}
+                  </p>
+                </div>
+
+                {/* Progressive Sequential Locking Navigation Pills */}
+                <div className="w-full">
+                  <div className="grid grid-cols-3 gap-1.5 p-1 bg-black/45 rounded-2xl border border-white/5">
                     {[
-                      { id: 'memory', title: (currentT as any).memoryGame, desc: (currentT as any).memoryDesc, icon: <Sparkles className="w-10 h-10" />, winsKey: 'memory', req: 0, action: startMemoryGame },
-                      { id: 'focus', title: (currentT as any).focusGame, desc: (currentT as any).focusDesc, icon: <Zap className="w-10 h-10" />, winsKey: 'focus', req: 3, prevKey: 'memory', action: startFocusGame },
-                      { id: 'reflexes', title: (currentT as any).reflexesGame, desc: (currentT as any).reflexesDesc, icon: <Activity className="w-10 h-10" />, winsKey: 'reflexes', req: 3, prevKey: 'focus', action: () => setShowNotification({ message: 'Cosmic Reflexes coming soon!', type: 'info' }) }
-                    ].map((game) => {
-                      const isUnlocked = game.req === 0 || (userData?.gameProgress?.[game.prevKey!] || 0) >= game.req;
-                      
+                      { id: 'reflexes', nameEn: "1. Reflexes", nameBn: "১. রিফ্লেক্স", lock: false, plays: game1Plays },
+                      { id: 'harmony', nameEn: "2. Aura Stroop", nameBn: "২. অরা স্ট্রেপ", lock: game1Plays < 3, plays: game2Plays },
+                      { id: 'sequence', nameEn: "3. Zen Path", nameBn: "৩. জেন পাথ", lock: game2Plays < 3, plays: game3Plays }
+                    ].map((g) => {
+                      const isLocked = g.lock;
+                      const isButtonActive = activeGameId === g.id && !isLocked;
                       return (
-                        <motion.div 
-                          key={game.id}
-                          initial={{ opacity: 0, y: 20 }} 
-                          animate={{ opacity: 1, y: 0 }} 
-                          whileHover={isUnlocked ? { y: -5 } : {}}
-                          className={`p-12 rounded-[56px] border transition-all flex flex-col items-center text-center space-y-8 backdrop-blur-3xl shadow-2xl relative overflow-hidden ${isUnlocked ? 'bg-white/5 border-white/10 group hover:border-sage/40 cursor-pointer' : 'bg-white/[0.02] border-white/5 grayscale'}`}
+                        <button
+                          key={g.id}
+                          onClick={() => {
+                            if (isLocked) {
+                              const alertMsg = lang === 'bn' 
+                                ? `গেমটি লকড! পূর্ববর্তী গেমটি অন্তত ৩ বার খেলুন (বর্তমানে ${g.plays}/৩ কমপ্লিট)।` 
+                                : `This training is locked! Play preceding step 3 times (currently completed: ${g.plays}/3).`;
+                              triggerNotification(alertMsg, 'error');
+                              return;
+                            }
+                            setActiveGameId(g.id as any);
+                          }}
+                          className={`py-2 rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center relative ${
+                            isButtonActive
+                              ? 'bg-purple-600 text-white font-black shadow-lg border border-purple-400/30'
+                              : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/80'
+                          }`}
                         >
-                           <div className="absolute top-0 right-0 p-8 opacity-5">
-                             {game.id === 'memory' ? <Brain className="w-32 h-32 text-sage" /> : game.id === 'focus' ? <Zap className="w-32 h-32 text-clay" /> : <Activity className="w-32 h-32 text-purple-400" />}
-                           </div>
-                           <div className={`w-20 h-20 rounded-[32px] flex items-center justify-center transition-transform ${isUnlocked ? 'bg-sage/10 text-sage group-hover:scale-110' : 'bg-white/5 text-white/10'}`}>
-                             {isUnlocked ? game.icon : <Lock className="w-8 h-8" />}
-                           </div>
-                           <div className="space-y-4">
-                             <div className="flex items-center justify-center gap-3">
-                               <h3 className={`text-3xl font-serif font-black ${isUnlocked ? 'text-white' : 'text-white/20'}`}>{game.title}</h3>
-                               {!isUnlocked && <Lock className="w-4 h-4 text-white/10" />}
-                             </div>
-                             <p className={`text-sm font-medium uppercase tracking-widest ${isUnlocked ? 'text-white/30' : 'text-white/10'}`}>
-                               {isUnlocked ? game.desc : `${(currentT as any).unlockReq} (${userData?.gameProgress?.[game.prevKey!] || 0}/${game.req})`}
-                             </p>
-                           </div>
-                           {isUnlocked ? (
-                             <button onClick={game.action} className="w-full bg-sage text-black h-16 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] hover:scale-[1.02] active:scale-95 transition-all">{(currentT as any).playNow}</button>
-                           ) : (
-                             <div className="w-full bg-white/5 text-white/10 h-16 rounded-[24px] flex items-center justify-center font-black text-[10px] uppercase tracking-widest">{(currentT as any).locked}</div>
-                           )}
-                           
-                           {isUnlocked && game.winsKey && (
-                             <div className="text-[9px] font-black text-sage uppercase tracking-[0.3em] opacity-40">
-                               {lang === 'bn' ? `${userData?.gameProgress?.[game.winsKey] || 0} বার জয়ী` : `${userData?.gameProgress?.[game.winsKey] || 0} Wins`}
-                             </div>
-                           )}
-                        </motion.div>
+                          <span className="text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
+                            {isLocked && <Lock size={10} className="text-red-400" />}
+                            {lang === 'bn' ? g.nameBn : g.nameEn}
+                          </span>
+                          <span className="text-[8px] opacity-60 mt-0.5">
+                            {isLocked ? (lang === 'bn' ? "লকড" : "Locked") : `${g.plays}/৩`}
+                          </span>
+                        </button>
                       );
                     })}
                   </div>
-                ) : (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-2xl mx-auto space-y-12">
-                     {activeGame === 'memory' && (
-                       <div className="grid grid-cols-3 sm:grid-cols-4 gap-6">
-                          {memoryCards.map((card, i) => (
-                             <motion.div 
-                               key={card.id} 
-                               whileHover={{ scale: 1.05 }} 
-                               whileTap={{ scale: 0.95 }}
-                               onClick={() => flipCard(i)} 
-                               className={`aspect-square rounded-[32px] cursor-pointer flex items-center justify-center text-4xl transition-all duration-500 perspective-1000 ${card.isFlipped || card.isMatched ? 'bg-sage border-sage shadow-[0_20px_40px_rgba(163,230,53,0.2)]' : 'bg-white/5 border border-white/10 hover:border-sage shadow-inner'}`}
-                             >
-                                <div className={`transition-all duration-500 ${card.isFlipped || card.isMatched ? 'opacity-100 rotate-0' : 'opacity-0 rotate-180'}`}>
-                                  {card.symbol}
-                                </div>
-                                {!(card.isFlipped || card.isMatched) && <Sparkles className="w-6 h-6 text-white/10" />}
-                             </motion.div>
-                          ))}
-                       </div>
-                     )}
-
-                     {activeGame === 'focus' && (
-                       <div className="relative w-full h-[400px] bg-white/5 border border-white/10 rounded-[48px] overflow-hidden cursor-crosshair">
-                          <div className="absolute top-6 left-6 text-white/20 font-black uppercase text-[10px] tracking-widest">
-                             Hits: {focusHits} / 10
-                          </div>
-                          <AnimatePresence>
-                             {focusTarget && (
-                                <motion.button
-                                  key={focusTarget.id}
-                                  initial={{ scale: 0, opacity: 0 }}
-                                  animate={{ scale: 1, opacity: 1 }}
-                                  exit={{ scale: 1.5, opacity: 0 }}
-                                  onClick={handleFocusHit}
-                                  className="absolute w-16 h-16 bg-sage rounded-full shadow-[0_0_30px_rgba(163,230,53,0.4)] flex items-center justify-center -translate-x-1/2 -translate-y-1/2 cursor-crosshair group"
-                                  style={{ left: `${focusTarget.x}%`, top: `${focusTarget.y}%` }}
-                                >
-                                  <div className="w-8 h-8 rounded-full border-2 border-black/20 animate-ping" />
-                                  <div className="absolute inset-0 rounded-full border-4 border-white/20 group-hover:scale-110 transition-transform" />
-                                </motion.button>
-                             )}
-                          </AnimatePresence>
-                       </div>
-                     )}
-
-                     <button onClick={() => setActiveGame(null)} className="mx-auto block text-[10px] font-black text-white/20 uppercase tracking-widest hover:text-white transition-colors">{currentT.cancel}</button>
-                  </motion.div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-             </div>
-          </div>
-        </main>
-      ) : (
-        <div className="min-h-screen bg-bg selection:bg-sage selection:text-black">
-          {/* Panoramic Hero Section */}
-          <section className="relative px-4 sm:px-6 pt-24 sm:pt-32 pb-32 sm:pb-40 lg:pt-56 lg:pb-72 mx-auto overflow-hidden">
-             <div className="absolute top-0 left-1/4 w-[800px] h-[800px] bg-sage/10 blur-[150px] rounded-full -translate-y-1/2 opacity-20" />
-             <div className="absolute bottom-0 right-1/4 w-[700px] h-[700px] bg-blue-500/5 blur-[180px] rounded-full translate-y-1/2 opacity-10" />
-             
-             <div className="max-w-7xl mx-auto space-y-16 sm:space-y-24">
-                <div className="max-w-4xl space-y-8 sm:space-y-12">
-                   <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 1 }}>
-                      <div className="inline-flex items-center gap-3 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-white/5 border border-white/10 text-sage text-[8px] sm:text-[10px] font-black uppercase tracking-[0.5em] mb-8 sm:mb-12 shadow-2xl backdrop-blur-md">
-                         <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> {lang === 'bn' ? 'আবেগীয় বুদ্ধিমত্তার ভবিষ্যৎ' : 'The Future of Emotional Intelligence'}
-                      </div>
-                      <h1 className="text-3xl xs:text-4xl sm:text-6xl lg:text-[7rem] font-serif font-black leading-[0.9] sm:leading-[0.8] tracking-tighter mb-8 sm:mb-10 text-white antialiased">
-                         {currentT.heroTitlePart1} <span className="text-sage italic font-light">{currentT.heroTitlePart2}</span> <span className="block mt-2 sm:mt-4">{currentT.heroTitlePart3}</span>
-                      </h1>
-                      <div className="flex flex-wrap items-center gap-6 sm:gap-10 mb-12 sm:mb-16">
-                        <div className="flex items-center gap-4 sm:gap-6">
-                           <div className="w-8 sm:w-12 h-px bg-white/20" />
-                           <p className="text-base sm:text-xl text-white/40 max-w-xl leading-relaxed font-light italic tracking-tight">
-                             {currentT.heroDesc}
-                           </p>
-                        </div>
-                        {/* New Floating Cartoon Guide */}
-                        <motion.div 
-                          animate={{ y: [0, -15, 0], rotate: [0, 2, -2, 0] }}
-                          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                          className="w-24 h-24 sm:w-32 sm:h-32 relative hidden lg:block"
-                        >
-                           {/* Cartoon Head */}
-                           <div className="w-16 h-16 bg-sage rounded-full mx-auto relative z-10 border-2 border-black/20 shadow-2xl">
-                             <div className="absolute top-1/2 left-1/3 w-2 h-2 bg-black rounded-full" />
-                             <div className="absolute top-1/2 right-1/3 w-2 h-2 bg-black rounded-full" />
-                             <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-6 h-3 border-b-2 border-black rounded-full" />
-                           </div>
-                           {/* Cartoon Body */}
-                           <div className="w-20 h-24 bg-white/10 rounded-[32px] -mt-6 mx-auto relative overflow-hidden backdrop-blur-3xl border border-white/20">
-                              <div className="absolute top-0 left-0 w-full h-2 bg-sage/40" />
-                              <Sparkles className="w-8 h-8 text-sage/20 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                           </div>
-                           {/* Floating Hands */}
-                           <motion.div animate={{ rotate: [0, 20, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute -left-6 top-12 w-10 h-6 bg-sage/20 rounded-full border border-sage/40" />
-                           <motion.div animate={{ rotate: [0, -20, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute -right-6 top-12 w-10 h-6 bg-sage/20 rounded-full border border-sage/40" />
-                        </motion.div>
-                      </div>
-                      <div className="flex flex-col sm:flex-row gap-8 items-center">
-                         <button onClick={signInWithGoogle} className="group bg-sage text-black h-12 px-8 rounded-2xl font-black text-sm uppercase tracking-tighter shadow-[0_15px_30px_rgba(163,230,53,0.15)] hover:scale-[1.05] hover:shadow-[0_15px_40px_rgba(163,230,53,0.25)] transition-all active:scale-95 flex items-center justify-center gap-2.5">
-                           {currentT.getStarted} <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
-                         </button>
-                         <div className="text-white font-serif text-xl sm:text-2xl font-black italic ml-4 opacity-80">
-                           {currentT.sukheMone}
-                         </div>
-                      </div>
-                   </motion.div>
                 </div>
 
-                {/* Animated Emotional Characters Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 relative">
-                   {/* Sad/Melancholy Character */}
-                   <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="bg-white/[0.02] border border-white/10 p-8 sm:p-12 rounded-[48px] sm:rounded-[72px] aspect-square xs:aspect-[4/5] flex flex-col items-center justify-center text-center space-y-6 sm:space-y-10 backdrop-blur-3xl relative group overflow-hidden shadow-2xl">
-                      <div className="absolute inset-0 bg-blue-900/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-                      <div className="relative">
-                         <motion.div animate={{ y: [0, 8, 0], scale: [1, 1.02, 1] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }} className="relative w-36 h-36 sm:w-48 sm:h-48 flex flex-col items-center justify-center">
-                            <div className="absolute inset-0 bg-blue-400/5 blur-[50px] rounded-full animate-pulse" />
-                            <img src={sadGirl} alt="Sad" className="w-full h-full object-contain relative z-10 drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)] mix-blend-lighten" referrerPolicy="no-referrer" />
-                         </motion.div>
-                      </div>
-                      <div className="space-y-2 sm:space-y-4 relative z-10">
-                        <div className="text-[9px] sm:text-[11px] font-black text-blue-400 uppercase tracking-[0.5em]">{currentT.sadText}</div>
-                        <p className="text-white/30 text-[10px] sm:text-xs italic font-medium leading-relaxed max-w-[220px] mx-auto tracking-tight">{lang === 'bn' ? 'কালো আকাশেও নক্ষত্র থাকে।' : 'Every storm eventually runs out of rain.'}</p>
-                      </div>
-                      <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-blue-900/10 to-transparent pointer-events-none" />
-                   </motion.div>
-
-                   {/* Happy/Party Character */}
-                   <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="bg-sage p-8 sm:p-12 rounded-[48px] sm:rounded-[72px] aspect-square xs:aspect-[4/5] flex flex-col items-center justify-center text-center space-y-6 sm:space-y-10 relative overflow-hidden group shadow-[0_40px_100px_rgba(163,230,53,0.15)] border-4 border-white/10">
-                      <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-                      <motion.div 
-                        animate={{ 
-                          y: [0, -30, 0], 
-                          rotate: [0, -5, 5, 0],
-                          scale: [1, 1.1, 1]
-                        }} 
-                        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }} 
-                        className="w-40 h-40 sm:w-56 sm:h-56 flex flex-col items-center justify-center"
-                      >
-                         <img src={happyGirl} alt="Happy" className="w-full h-full object-contain drop-shadow-[0_15px_40px_rgba(0,0,0,0.4)]" referrerPolicy="no-referrer" />
-                      </motion.div>
-                      <div className="space-y-2 sm:space-y-4 relative z-10">
-                        <div className="text-[9px] sm:text-[11px] font-black text-black uppercase tracking-[0.5em]">{currentT.celebrateText}</div>
-                        <p className="text-black/50 text-[8px] sm:text-[10px] font-black italic uppercase tracking-widest">{lang === 'bn' ? 'একসাথে ডানা মেলুন।' : 'Let\'s radiate your light together.'}</p>
-                      </div>
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2 animate-pulse" />
-                   </motion.div>
-
-                   {/* Tired/Exhausted Character */}
-                   <motion.div initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }} className="bg-white/[0.02] border border-white/10 p-8 sm:p-12 rounded-[48px] sm:rounded-[72px] aspect-square xs:aspect-[4/5] flex flex-col items-center justify-center text-center space-y-6 sm:space-y-10 backdrop-blur-3xl relative overflow-hidden group shadow-2xl">
-                      <div className="absolute top-0 right-0 p-8 sm:p-12 opacity-5 pointer-events-none"><Zap className="w-24 h-24 sm:w-40 sm:h-40 text-red-500" /></div>
-                      <motion.div animate={{ rotate: [0, 1, -1, 0], y: [0, 5, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} className="w-40 h-40 sm:w-56 sm:h-56 flex flex-col items-center justify-center">
-                         <div className="absolute inset-0 bg-red-500/5 blur-[60px] rounded-full animate-pulse" />
-                         <img src={tiredGirl} alt="Tired" className="w-full h-full object-contain relative z-10 drop-shadow-[0_15px_40px_rgba(0,0,0,0.5)] mix-blend-lighten" referrerPolicy="no-referrer" />
-                      </motion.div>
-                      <div className="space-y-2 sm:space-y-4 z-10 relative">
-                        <div className="text-[9px] sm:text-[11px] font-black text-red-400 uppercase tracking-[0.5em]">{lang === 'bn' ? 'বিশ্রাম প্রয়োজন' : 'RECHARGE REQUIRED'}</div>
-                        <p className="text-white/20 text-[8px] sm:text-[10px] font-medium uppercase tracking-widest leading-loose">{lang === 'bn' ? 'শান্ত হওয়ার সময় এসেছে' : 'Finding calm amidst the noise'}</p>
-                      </div>
-                      <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-red-900/5 to-transparent pointer-events-none" />
-                   </motion.div>
-                </div>
-             </div>
-          </section>
-
-          {/* Features Cinematic Grid */}
-          <section className="px-4 sm:px-6 py-24 sm:py-32 lg:py-56 bg-white/[0.01] border-y border-white/5 relative overflow-hidden">
-             <div className="max-w-7xl mx-auto">
-                <div className="grid lg:grid-cols-2 gap-16 lg:gap-32 items-end mb-20 lg:mb-40">
-                   <div className="space-y-6 sm:space-y-10">
-                      <div className="text-sage font-black text-[10px] sm:text-[12px] uppercase tracking-[0.6em]">{currentT.landingSubtitle}</div>
-                      <h2 className="text-3xl sm:text-5xl lg:text-6xl font-serif font-black tracking-tighter text-white leading-none">{currentT.landingFeaturesTitle}</h2>
-                   </div>
-                   <p className="text-lg sm:text-2xl text-white/30 font-light italic leading-relaxed max-w-xl">{lang === 'bn' ? 'আমরা আপনার মনের গহীন স্তরে লুকানো আবেগগুলো এআই এর মাধ্যমে উন্মোচন করি।' : 'We leverage advanced AI to decode the intricate layers of your emotional landscape.'}</p>
-                </div>
- 
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-12">
-                   {[
-                     { title: currentT.featVisual, desc: currentT.featVisualDesc, icon: <Camera className="w-8 h-8 sm:w-10 sm:h-10" />, color: 'text-sage', bg: 'bg-sage/10', delay: 0 },
-                     { title: currentT.featVocal, desc: currentT.featVocalDesc, icon: <Mic className="w-8 h-8 sm:w-10 sm:h-10" />, color: 'text-blue-400', bg: 'bg-blue-500/10', delay: 0.1 },
-                     { title: currentT.featVerbal, desc: currentT.featVerbalDesc, icon: <BookOpen className="w-8 h-8 sm:w-10 sm:h-10" />, color: 'text-clay', bg: 'bg-clay/10', delay: 0.2 },
-                     { title: currentT.coachTitle, desc: lang === 'bn' ? 'আপনার ব্যক্তিগত এআই মেন্টর সবসময় পাশে আছে।' : 'Your personal AI mentor, available 24/7 for you.', icon: <Brain className="w-8 h-8 sm:w-10 sm:h-10" />, color: 'text-purple-400', bg: 'bg-purple-500/10', delay: 0.3 },
-                     { title: currentT.exercises, desc: lang === 'bn' ? 'মন শান্ত করার জন্য গাইডেড গেমস এবং ব্রিদিং।' : 'Guided games and breathing to calm your soul.', icon: <Wind className="w-8 h-8 sm:w-10 sm:h-10" />, color: 'text-orange-400', bg: 'bg-orange-500/10', delay: 0.4 },
-                     { title: currentT.historyTitle, desc: lang === 'bn' ? 'আপনার মানসিক পরিবর্তনের ইতিহাস দেখুন গ্রাফে।' : 'Track your mental trends with high-precision logs.', icon: <History className="w-8 h-8 sm:w-10 sm:h-10" />, color: 'text-ink', bg: 'bg-white/10', delay: 0.5 }
-                   ].map((feature, i) => (
-                     <motion.div key={i} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: feature.delay }} className="group p-8 sm:p-14 rounded-[48px] sm:rounded-[64px] border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/10 transition-all space-y-6 sm:space-y-10 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className={`w-16 h-16 sm:w-20 sm:h-20 ${feature.bg} ${feature.color} rounded-2xl sm:rounded-[28px] flex items-center justify-center group-hover:scale-110 transition-transform shadow-2xl`}>{feature.icon}</div>
-                        <div className="space-y-3 sm:space-y-6">
-                           <h2 className="text-xl sm:text-2xl font-serif font-black text-white">{feature.title}</h2>
-                           <p className="text-xs sm:text-sm text-white/30 leading-relaxed font-medium uppercase tracking-tight">{feature.desc}</p>
-                        </div>
-                     </motion.div>
-                   ))}
-                </div>
-             </div>
-          </section>
-
-          {/* Outcomes & Pricing Section */}
-          <section id="pricing" className="px-4 sm:px-6 py-24 sm:py-32 lg:py-56 relative overflow-hidden">
-             <div className="max-w-7xl mx-auto">
-                <div className="text-center space-y-4 sm:space-y-8 mb-16 sm:mb-32">
-                   <div className="text-sage font-black text-[10px] sm:text-[12px] uppercase tracking-[0.6em]">{lang === 'bn' ? 'মূল্য নির্ধারণ' : 'PRICING'}</div>
-                   <h2 className="text-4xl sm:text-6xl lg:text-8xl font-serif font-black tracking-tighter text-white leading-none">{lang === 'bn' ? 'আপনার সাকসেস প্ল্যান' : 'Your Success Plan'}</h2>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-                   {[
-                     { 
-                       title: lang === 'bn' ? "ক্ল্যারিটি ফাউন্ডেশন" : "The Clarity Foundation", 
-                       outcome: lang === 'bn' ? "দৈনিক মুড ট্র্যাকিং" : "Daily Mood Tracking & Awareness",
-                       price: "$0",
-                       features: lang === 'bn' ? ["আনলিমিটেড জার্নালিং", "টেক্সট এনালাইসিস", "বেসিক ইতিহাস", "দৈনিক অনুপ্রেরণা"] : ["Unlimited Journaling", "Text Analysis", "Basic History", "Daily Affirmations"],
-                       description: lang === 'bn' ? "আপনার মানসিক স্বাস্থ্যের যাত্রার প্রথম ধাপ। একদম ফ্রি।" : "The first step in your mental health journey. Completely free.",
-                       color: "border-white/10 bg-white/[0.02]"
-                     },
-                     { 
-                       title: lang === 'bn' ? "ইমোশনাল রেজিলিয়েন্স প্রো" : "The Emotional Resilience Pro", 
-                       outcome: lang === 'bn' ? "রিয়েল-টাইম স্ট্রেস ম্যানেজমেন্ট" : "Real-time Stress Management & Support",
-                       price: "$12",
-                       featured: true,
-                       features: lang === 'bn' ? ["ফাউন্ডেশনের সবকিছু+", "ভয়েস টোন এনালাইসিস", "ডিপ মিরর (ফেস)", "গাইডেড সাপোর্ট এআই"] : ["Everything in Foundation+", "Voice Tone Analysis", "The Deep Mirror (Face)", "Guided Support AI"],
-                       description: lang === 'bn' ? "গভীর বিশ্লেষণের মাধ্যমে নিজের আবেগকে নিয়ন্ত্রণ করার জন্য ডিজাইন করা হয়েছে। এতে থাকছে ভয়েস এবং ফেস এনালাইসিস।" : "Designed to control your emotions through deep analysis. Includes voice and face analysis.",
-                       color: "border-sage bg-sage/5"
-                     },
-                     { 
-                       title: lang === 'bn' ? "পিক পারফরম্যান্স স্যুট" : "The Peak Performance Suite", 
-                       outcome: lang === 'bn' ? "ইমোশনাল ইন্টেলিজেন্স স্যুট" : "Emotional Intelligence & Focus Suite",
-                       price: "$24",
-                       features: lang === 'bn' ? ["প্রো এর সবকিছু+", "অ্যাডভান্সড ট্রেন্ড ইনসাইটস", "ব্রেইন ব্যালান্স গেমস", "প্রায়োরিটি কম্প্যানিয়ন এক্সেস"] : ["Everything in Pro+", "Advanced Trend Insights", "Brain Balance Games", "Priority Companion Access"],
-                       description: lang === 'bn' ? "যারা নিজেদের সেরাটা দিতে চান তাদের জন্য। অ্যাডভান্সড ইনসাইটস এবং স্পেশাল গেমস এর মাধ্যমে আপনার পারফরম্যান্স বাড়ান।" : "For those who want to give their best. Boost your performance with advanced insights and special games.",
-                       color: "border-purple-500/20 bg-purple-500/5"
-                     }
-                   ].map((plan, i) => (
-                     <motion.div 
-                       key={i} 
-                       whileHover={{ y: -10 }} 
-                       onClick={() => setViewingPlan(plan)}
-                       className={`p-8 sm:p-12 rounded-[48px] sm:rounded-[64px] border ${plan.color} relative overflow-hidden flex flex-col justify-between cursor-pointer group`}
-                     >
-                        {plan.featured && <div className="absolute top-8 sm:top-12 right-8 sm:right-12 bg-sage text-black px-3 sm:px-4 py-1.5 rounded-full text-[8px] sm:text-[10px] font-black uppercase tracking-widest">{lang === 'bn' ? 'সেরা অফার' : 'BEST VALUE'}</div>}
-                        <div className="space-y-6 sm:space-y-10">
-                           <div>
-                             <div className="flex items-center justify-between mb-2 sm:mb-4">
-                               <h3 className="text-xl sm:text-2xl font-serif font-black">{plan.title}</h3>
-                               <Info className="w-5 h-5 text-white/10 group-hover:text-sage transition-colors" />
-                             </div>
-                             <p className="text-sage text-xs sm:text-sm font-black uppercase tracking-widest">{plan.outcome}</p>
-                           </div>
-                           <div className="text-5xl sm:text-6xl font-black">{plan.price}<span className="text-lg sm:text-xl text-white/20 font-medium">/mo</span></div>
-                           <div className="space-y-3 sm:space-y-4">
-                              {plan.features.map((f, j) => (
-                                <div key={j} className="flex items-center gap-2 sm:gap-3 text-xs text-white/40 font-medium uppercase tracking-tight">
-                                   <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sage" /> {f}
-                                </div>
-                              ))}
-                           </div>
-                        </div>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); setCheckoutPlan(plan); }}
-                          className={`w-full h-16 sm:h-20 rounded-2xl sm:rounded-[32px] mt-8 sm:mt-12 font-black uppercase tracking-widest text-[10px] sm:text-xs transition-all ${plan.featured ? 'bg-sage text-black shadow-xl shadow-sage/20' : 'bg-white/5 text-white hover:bg-white/10'}`}>
-                           {currentT.getStarted}
-                        </button>
-                     </motion.div>
-                   ))}
-                </div>
-             </div>
-          </section>
-
-          <footer className="px-4 sm:px-6 py-12 sm:py-24 bg-bg border-t border-white/5 text-center mt-10 sm:mt-20 relative z-10">
-             <div className="max-w-7xl mx-auto space-y-8 sm:space-y-12">
-                <div className="font-serif text-2xl sm:text-3xl font-black italic text-sage opacity-10 tracking-widest">{currentT.appName}</div>
-                <div className="flex flex-wrap justify-center gap-6 sm:gap-12 font-black uppercase tracking-[0.3em] text-[8px] sm:text-[10px] text-white/20">
-                   <span className="hover:text-sage transition-colors cursor-pointer">Privacy</span>
-                   <span className="hover:text-sage transition-colors cursor-pointer">Terms</span>
-                   <span className="hover:text-sage transition-colors cursor-pointer">Support</span>
-                </div>
-                <p className="text-[8px] sm:text-[10px] text-white/10 font-black uppercase tracking-widest">&copy; 2026 {currentT.appName} AI. Beyond Emotions.</p>
-             </div>
-          </footer>
-        </div>
-      )}
-
-      <AnimatePresence>
-        {activeExercise && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[600] bg-bg flex items-center justify-center p-6">
-             <div className="max-w-2xl w-full text-center space-y-12">
-                <div className="space-y-4">
-                  <div className="w-20 h-20 rounded-3xl bg-sage/10 flex items-center justify-center mx-auto text-sage mb-8"><Brain className="w-10 h-10" /></div>
-                  <h2 className="text-3xl font-serif font-black uppercase tracking-tighter">{activeExercise.title}</h2>
-                </div>
-
-                <div className="relative w-80 h-80 mx-auto flex items-center justify-center">
-                   <motion.div 
-                     animate={{ 
-                       scale: [1, 1.8, 1],
-                       opacity: [0.1, 0.4, 0.1]
-                     }} 
-                     transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                     className="absolute inset-0 bg-sage rounded-full" 
-                   />
-                   <div className="w-64 h-64 rounded-full border-4 border-sage/20 flex flex-col items-center justify-center relative z-10 bg-bg">
-                      <div className="text-5xl font-serif font-black text-sage transition-all">{exerciseTimeLeft > 0 ? exerciseTimeLeft : '0'}</div>
-                      <div className="text-[10px] font-black text-sage/40 uppercase tracking-[0.4em] mt-2">SECONDS</div>
-                   </div>
-                </div>
-
-                <div className="space-y-8 min-h-[120px]">
-                   <AnimatePresence mode="wait">
-                     {exerciseTimeLeft > 0 ? (
-                       <motion.div key={exerciseStep} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4">
-                          <p className="text-2xl font-serif italic text-white">"{lang === 'bn' ? activeExercise.steps[exerciseStep].text : activeExercise.steps[exerciseStep].textEn}"</p>
-                          <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em]">{currentT.nextStep}: {lang === 'bn' ? (activeExercise.steps[exerciseStep + 1]?.text || '...') : (activeExercise.steps[exerciseStep + 1]?.textEn || '...')}</div>
-                       </motion.div>
-                     ) : (
-                       <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="space-y-8">
-                          <p className="text-3xl font-serif italic text-sage">{currentT.exerciseComplete}</p>
-                          <button onClick={() => setActiveExercise(null)} className="bg-sage text-black px-12 h-16 rounded-[24px] font-black uppercase tracking-widest text-[12px]">{lang === 'bn' ? 'ড্যাশবোর্ডে ফিরে যান' : 'BACK TO DASHBOARD'}</button>
-                       </motion.div>
-                     )}
-                   </AnimatePresence>
-                </div>
-
-                {exerciseTimeLeft > 0 && (
-                   <button onClick={() => setActiveExercise(null)} className="text-white/20 hover:text-white font-black uppercase tracking-[0.5em] text-[10px]">{currentT.cancel}</button>
-                )}
-             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-
-
-      <AnimatePresence>
-        {isScanning && (
-          <motion.div key="scanning-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] bg-bg/95 backdrop-blur-3xl flex items-center justify-center p-6 text-white overflow-y-auto">
-            
-            {/* Privacy Trust Popup */}
-            <div className="fixed top-8 left-1/2 -translate-x-1/2 w-full max-w-sm px-6 z-[210]">
-               <motion.div 
-                 initial={{ opacity: 0, y: -40, scale: 0.9 }} 
-                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                 transition={{ type: "spring", damping: 20, stiffness: 300, delay: 0.2 }}
-                 className="bg-green-500 text-white p-4 rounded-3xl shadow-[0_20px_50px_rgba(34,197,94,0.3)] flex items-center gap-4 border border-green-400/30"
-               >
-                  <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center shrink-0">
-                     <ShieldCheck className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="text-left space-y-0.5 min-w-0">
-                     <div className="text-[10px] font-black uppercase tracking-widest leading-none">{(currentT as any).privacyBadge}</div>
-                     <div className="text-[8px] opacity-80 font-bold uppercase leading-tight">{(currentT as any).privacyDisclaimer}</div>
-                  </div>
-               </motion.div>
-            </div>
-            <div className="max-w-xl w-full text-center py-20">
-              {scanStep === 'camera' && (
-                <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="space-y-8 sm:space-y-12">
-                    <div className="relative w-64 h-64 xs:w-72 xs:h-72 md:w-96 md:h-96 mx-auto rounded-[48px] sm:rounded-[64px] overflow-hidden bg-black border-2 border-white/10 shadow-[0_0_120px_rgba(132,204,22,0.2)]">
-                       <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover scale-x-[-1]" />
-                       <div className="absolute inset-0 border-8 border-white/5 rounded-[60px] pointer-events-none" />
-                       
-
-
-                       <motion.div animate={{ top: isRecording ? ['0%', '100%', '0%'] : '50%' }} transition={isRecording ? { duration: 3, repeat: Infinity, ease: "linear" } : {}} className={`absolute left-0 right-0 h-1 z-10 ${isRecording ? 'bg-red-500 shadow-[0_0_40px_red]' : 'bg-sage shadow-[0_0_40px_rgba(132,204,22,1)]'}`} />
-                       {isRecording && <div className="absolute top-8 right-8 bg-red-600 px-5 thick:py-2 rounded-full text-xs font-black uppercase tracking-[0.2em] flex items-center gap-3"><div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse" /> {Math.floor(recordingTime/60)}:{(recordingTime%60).toString().padStart(2,'0')}</div>}
-                    </div>
-                   <div className="space-y-8">
-                      <h2 className="text-4xl font-serif font-black uppercase tracking-tighter">{isRecording ? (currentT as any).recordingLabel : currentT.alignFace}</h2>
-                      {transcription && <p className="text-white/40 text-sm max-w-sm mx-auto font-medium tracking-tight uppercase line-clamp-2">"{transcription}"</p>}
-                      {!isRecording && (
-                        <div className="flex justify-center gap-6">
-                           <div className="flex bg-white/5 rounded-full p-1.5 border border-white/10">
-                              <button onClick={() => setScanMode('photo')} className={`px-8 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${scanMode === 'photo' ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>Snapshot</button>
-                              <button onClick={() => setScanMode('video')} className={`px-8 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all ${scanMode === 'video' ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>Journey</button>
-                           </div>
-                        </div>
-                      )}
-                      <div className="flex flex-col items-center gap-10">
-                         <div className="flex items-center gap-6">
-                            <button onClick={capturePhoto} className={`w-24 h-24 rounded-full border-4 flex items-center justify-center transition-all active:scale-90 ${scanMode === 'video' ? 'border-red-500/20' : 'border-white/10'}`}>
-                               <div className={`w-16 h-16 rounded-full shadow-2xl ${isRecording ? 'bg-red-600 animate-pulse rounded-2xl' : (scanMode === 'video' ? 'bg-red-600/40' : 'bg-sage')}`} />
-                            </button>
-                            
-                            {!isRecording && (
-                              <label className="w-16 h-16 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center cursor-pointer hover:bg-white/10 transition-all hover:scale-105 active:scale-95 group">
-                                <Sparkles className="w-6 h-6 text-white/40 group-hover:text-sage transition-colors" />
-                                <input 
-                                  type="file" 
-                                  className="hidden" 
-                                  accept={analysisType === 'voice' ? 'audio/*' : 'video/*,image/*'}
-                                  onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    setScanStep('analyzing');
-                                    stopCamera();
-                                    // Simulation of processing "shared" file
-                                    setTimeout(() => {
-                                      analyzeResult(lang === 'bn' ? `একটি ${file.type.includes('video') ? 'ভিডিও' : 'অডিও'} ফাইল শেয়ার করা হয়েছে: ${file.name}` : `Shared a ${file.type.includes('video') ? 'video' : 'audio'} file: ${file.name}`);
-                                    }, 2000);
-                                  }}
-                                />
-                                <div className="absolute -bottom-6 text-[8px] font-black text-white/20 uppercase tracking-widest">{lang === 'bn' ? 'ফাইল শেয়ার' : 'SHARE FILE'}</div>
-                              </label>
-                            )}
-                         </div>
-                         <button onClick={() => { stopCamera(); setIsScanning(false); }} className="text-white/20 hover:text-white font-black uppercase tracking-[0.5em] text-[12px]">{currentT.cancel}</button>
-                      </div>
-                   </div>
-                </motion.div>
-              )}
-
-              {scanStep === 'analyzing' && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-16 w-full max-w-xl mx-auto">
-                   {analysisType === 'text' ? (
-                     <div className="space-y-12">
-                        <div className="text-center space-y-4">
-                           <div className="w-20 h-20 bg-sage/5 rounded-[32px] flex items-center justify-center mx-auto shadow-inner"><MessageSquare className="w-10 h-10 text-sage" /></div>
-                           <h2 className="text-5xl font-serif font-black tracking-tighter uppercase">{currentT.textJournal}</h2>
-                        </div>
-                        <textarea value={journalText} onChange={(e) => setJournalText(e.target.value)} placeholder={currentT.writeJournal} className="w-full h-72 bg-white/[0.03] border border-white/10 rounded-[48px] p-10 text-2xl text-white placeholder:text-white/10 focus:outline-none focus:border-sage/30 transition-all resize-none shadow-2xl" />
-                        <div className="flex gap-6">
-                           <button onClick={() => setIsScanning(false)} className="flex-1 h-24 rounded-[32px] border-2 border-white/5 text-white/20 font-black uppercase tracking-widest text-[14px] hover:text-white transition-all">{currentT.cancel}</button>
-                           <button onClick={() => { if (!journalText.trim()) return; setScanStep('analyzing'); analyzeResult(); setJournalText(''); }} className="flex-[2] bg-sage text-black h-24 rounded-[32px] font-black uppercase tracking-tighter text-2xl shadow-3xl shadow-sage/20 active:scale-95">{currentT.analyzeText}</button>
-                        </div>
-                     </div>
-                   ) : analysisType === 'voice' ? (
-                     <div className="space-y-16">
-                        <div className="relative w-80 h-80 mx-auto flex items-center justify-center">
-                           <motion.div animate={{ scale: [1, 2.5, 1], opacity: [0.1, 0, 0.1] }} transition={{ duration: 2, repeat: Infinity }} className="absolute inset-0 bg-sage rounded-full" />
-                           <motion.div animate={{ scale: [1, 1.8, 1] }} transition={{ duration: 1.5, repeat: Infinity }} className="absolute inset-10 border-4 border-sage/20 rounded-full" />
-                           <div 
-                            className={`w-40 h-40 rounded-full flex items-center justify-center z-10 cursor-pointer transition-all ${isRecording ? 'bg-red-600 scale-90 shadow-[0_0_100px_rgba(220,38,38,0.5)]' : 'bg-sage shadow-[0_0_100px_rgba(132,204,22,0.5)]'}`} 
-                            onClick={() => isRecording ? stopRecording() : startRecording()}
-                           >
-                            <Mic className={`w-20 h-20 ${isRecording ? 'text-white' : 'text-black'}`} />
-                           </div>
-                        </div>
-                        <div className="space-y-8">
-                           <h2 className="text-5xl font-serif font-black tracking-tighter uppercase">{isRecording ? (currentT as any).listeningLabel : currentT.listening}</h2>
-                           {isRecording && <div className="text-red-500 font-black text-4xl tracking-[0.3em]">{Math.floor(recordingTime/60)}:{(recordingTime%60).toString().padStart(2,'0')}</div>}
-                           <p className="text-white/20 font-black uppercase tracking-[0.5em] text-[14px]">{currentT.voiceHint}</p>
-                        </div>
-                        <button onClick={() => { setIsRecording(false); setIsScanning(false); stopCamera(); }} className="text-white/10 hover:text-white font-black uppercase tracking-[0.6em] text-[12px]">{currentT.cancel}</button>
-                     </div>
-                   ) : (
-                     <div className="space-y-16 py-20">
-                        <div className="flex justify-center gap-4">
-                           {[0, 1, 2].map(i => <motion.div key={i} animate={{ scale: [1, 2.5, 1], opacity: [0.2, 1, 0.2] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }} className="w-6 h-6 bg-sage rounded-full" />)}
-                        </div>
-                        <div className="space-y-6">
-                           <h2 className="text-5xl font-serif font-black tracking-tighter uppercase">{scanMode === 'video' ? currentT.processingVideo : currentT.processingImage}</h2>
-                           <p className="text-white/10 font-black uppercase tracking-[0.5em] text-[14px]">{currentT.decoding}</p>
-                        </div>
-                     </div>
-                   )}
-                </motion.div>
-              )}
-
-              {scanStep === 'result' && (
-                <motion.div initial={{ opacity: 0, scale: 0.8, rotateY: 15 }} animate={{ opacity: 1, scale: 1, rotateY: 0 }} className="space-y-12">
-                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1, rotate: 12 }} className="w-32 h-32 bg-sage rounded-[40px] mx-auto flex items-center justify-center shadow-3xl shadow-sage/40"><Sparkles className="w-16 h-16 text-black" /></motion.div>
+                {/* GAME CONTAINER FRAME VIEWPORTS */}
+                <div className="relative w-full h-72 sm:h-80 border border-white/5 bg-black/40 rounded-3xl overflow-hidden shadow-inner flex flex-col justify-center items-center p-4">
                   
-                  <div className="bg-white/5 p-12 md:p-16 rounded-[80px] border border-white/10 backdrop-blur-3xl shadow-inner relative overflow-hidden">
-                    <div className="absolute top-0 left-0 text-white/[0.02] p-16"><Star className="w-64 h-64" /></div>
-                    
-                    <AnimatePresence mode="wait">
-                      {!selectedSupportType ? (
-                        <motion.div key="reflection-view" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-8">
-                           <p className="text-2xl md:text-4xl font-serif italic leading-tight text-white tracking-tighter antialiased">
-                             "{aiReflection}"
-                           </p>
-                           <div className="flex gap-4">
-                             {isSpeaking ? (
-                               <button onClick={stopSpeaking} className="bg-red-500/10 text-red-400 px-6 h-12 rounded-full font-black text-[10px] uppercase tracking-widest flex items-center gap-2 border border-red-500/20 active:scale-95">
-                                 <Mic className="w-4 h-4 animate-pulse" /> {currentT.stopAudio}
-                               </button>
-                             ) : (
-                               <button onClick={() => speakText(aiReflection)} className="bg-sage/10 text-sage px-6 h-12 rounded-full font-black text-[10px] uppercase tracking-widest flex items-center gap-2 border border-sage/20 active:scale-95 hover:bg-sage/20">
-                                 <Mic className="w-4 h-4" /> {currentT.audioOutput}
-                               </button>
-                             )}
-                             <button onClick={() => setAutoSpeak(!autoSpeak)} className={`px-6 h-12 rounded-full font-black text-[10px] uppercase tracking-widest border transition-all ${autoSpeak ? 'bg-sage text-black border-sage' : 'bg-white/5 text-white/40 border-white/10'}`}>
-                               Auto-Play {autoSpeak ? 'ON' : 'OFF'}
-                             </button>
-                           </div>
-                        </motion.div>
-                      ) : (
-                        <motion.div key="support-view" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                           <div className="flex items-center gap-2 text-sage text-[10px] font-black uppercase tracking-[0.3em] mb-2">
-                              <Sparkles className="w-4 h-4" /> 
-                              {selectedSupportType === 'motivation' ? currentT.motivation : 
-                               selectedSupportType === 'happy' ? currentT.happy : 
-                               selectedSupportType === 'strong' ? currentT.strong : currentT.emotional}
-                           </div>
-                           {generatingSupport ? (
-                             <div className="flex gap-2">
-                               {[0,1,2].map(i => <motion.div key={i} animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 1, delay: i*0.2 }} className="w-3 h-3 bg-sage rounded-full" />)}
-                             </div>
-                           ) : (
-                             <p className="text-xl md:text-3xl font-serif italic leading-tight text-sage tracking-tight antialiased">
-                               "{supportMessage}"
-                             </p>
-                           )}
-                           <button onClick={() => setSelectedSupportType(null)} className="text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-white transition-colors">{currentT.backToReflection}</button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                  {/* GAME 1: COSMIC COORDINATE REFLEXES VIEWPORT */}
+                  {activeGameId === 'reflexes' && (
+                    <div className="relative w-full h-full">
+                      {isPlayingReflex ? (
+                        <div className="w-full h-full relative">
+                          {/* Score and Timer header items inside reflexes board */}
+                          <div className="absolute top-2 left-2 right-2 flex justify-between px-3 py-1.5 rounded-xl bg-black/60 border border-white/5 text-[9px] font-black text-sage z-10">
+                            <span>HITS: {reflexScore}</span>
+                            <span>TIME LEFT: {reflexTimeLeft}s</span>
+                          </div>
 
-                  {!selectedSupportType && (
-                    <div className="space-y-6">
-                      <h4 className="text-[12px] font-black text-white/20 uppercase tracking-[0.3em]">{currentT.chooseCard}</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        {[
-                          { id: 'motivation', label: currentT.motivation, icon: <Zap /> },
-                          { id: 'happy', label: currentT.happy, icon: <Heart /> },
-                          { id: 'strong', label: currentT.strong, icon: <ShieldCheck /> },
-                          { id: 'emotional', label: currentT.emotional, icon: <Waves /> }
-                        ].map(support => (
-                          <button 
-                            key={support.id}
-                            onClick={() => generateSupportMessage(support.id)}
-                            className="bg-white/5 p-6 rounded-[32px] border border-white/10 hover:border-sage transition-all text-center group flex flex-col items-center gap-3"
+                          <motion.button
+                            layout
+                            onClick={onTargetHit}
+                            style={{ top: targetPos.top, left: targetPos.left }}
+                            className="absolute w-10 h-10 rounded-full bg-gradient-to-r from-sage to-purple-400 border border-white/50 flex items-center justify-center shadow-lg cursor-pointer transform -translate-x-1/2 -translate-y-1/2 z-20"
+                            animate={{ scale: [1, 1.25, 1] }}
+                            transition={{ duration: 0.5, repeat: Infinity }}
                           >
-                            <div className="w-10 h-10 rounded-xl bg-sage/5 flex items-center justify-center text-sage group-hover:scale-110 transition-transform">{support.icon}</div>
-                            <span className="text-[10px] font-black text-white/60 uppercase tracking-tight">{support.label}</span>
+                            <Sparkles size={14} className="text-black" />
+                          </motion.button>
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0 flex flex-col justify-center items-center text-center p-6 space-y-4">
+                          <div className="p-3 w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-300 flex items-center justify-center mx-auto">
+                            <Sparkles size={24} className="animate-pulse text-sage" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-white">{lang === 'bn' ? 'কসমিক রিফ্লেক্সেস' : 'Cosmic Coordinate Reflexes'}</h4>
+                            <p className="text-[10px] text-white/50 mt-1 max-w-sm">
+                              {lang === 'bn' ? 'স্ক্রিনে উড়ন্ত নক্ষত্রগুলিকে ফোকাস বজায় রেখে দ্রুত স্পর্শ করুন।' : 'Calibrate reaction speed by quickly tapping cosmic star coordinates as they shift.'}
+                            </p>
+                          </div>
+                          
+                          <button
+                            onClick={() => {
+                              setIsPlayingReflex(true);
+                              setReflexScore(0);
+                              setReflexTimeLeft(15);
+                              moveReflexTarget();
+                              if (autoSpeak) {
+                                speakNow(lang === 'bn' ? "রিফ্লেক্স ট্রেনিং শুরু হলো।" : "Reflex calibration initializing. Maintain clear breathing.");
+                              }
+                            }}
+                            className="px-6 py-2.5 bg-sage text-black font-extrabold uppercase tracking-widest text-[10px] rounded-xl cursor-pointer hover:bg-sage/90"
+                          >
+                            {lang === 'bn' ? 'রিফ্লেক্স সেশন শুরু করুন' : 'Ignite Reflex Sequence'}
                           </button>
-                        ))}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  <div className="space-y-8">
-                    <button disabled={isCollecting} onClick={handleCheckIn} className={`w-full bg-sage text-black h-28 rounded-[48px] font-black text-3xl uppercase tracking-tighter shadow-3xl shadow-sage/30 transition-all flex items-center justify-center gap-8 ${isCollecting ? 'opacity-50' : 'hover:scale-105 active:scale-95'}`}>
-                       {isCollecting ? <div className="w-10 h-10 border-8 border-black/10 border-t-black rounded-full animate-spin" /> : <>{currentT.collectPoints} <Zap className="w-8 h-8 fill-current" /></>}
-                    </button>
-                    <button onClick={() => setIsScanning(false)} className="text-white/10 hover:text-white font-black uppercase tracking-[0.8em] text-[14px]">{(currentT as any).dismiss}</button>
-                  </div>
-                </motion.div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {showNotification && (
-        <motion.div initial={{ opacity: 0, y: 50, x: '-50%' }} animate={{ opacity: 1, y: 0, x: '-50%' }} exit={{ opacity: 0, y: 20, x: '-50%' }} className={`fixed bottom-10 left-1/2 z-[300] px-8 py-5 rounded-[24px] shadow-3xl flex items-center gap-4 border ${showNotification.type === 'success' ? 'bg-sage text-black border-sage' : 'bg-red-500 text-white border-red-400'}`}>
-          {showNotification.type === 'success' ? <Sparkles className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
-          <span className="font-black uppercase tracking-tight text-[12px]">{showNotification.message}</span>
-          <button onClick={() => setShowNotification(null)} className="ml-8 font-black uppercase text-[10px] tracking-widest opacity-40 hover:opacity-100">Close</button>
-        </motion.div>
+                  {/* GAME 2: AURA SHIFTING HARMONY STROOP MATCH VIEWPORT */}
+                  {activeGameId === 'harmony' && (
+                    <div className="w-full h-full flex flex-col justify-center items-center text-center">
+                      {isPlayingGame2 ? (
+                        <div className="w-full h-full flex flex-col justify-between p-2">
+                          
+                          {/* HUD Bar */}
+                          <div className="flex justify-between px-3 py-1.5 rounded-xl bg-black/60 border border-white/5 text-[9px] font-black text-purple-300 w-full mb-2">
+                            <span>CORRECT MATCHES: {game2Score}</span>
+                            <span>TIME: {game2TimeLeft}s</span>
+                          </div>
+
+                          <div className="bg-black/50 border border-white/5 rounded-2xl p-6 flex flex-col items-center justify-center my-auto space-y-3">
+                            <p className="text-[10px] text-white/40 uppercase tracking-widest font-black">
+                              {lang === 'bn' ? "নিচের বাটনে লেখাটির গায়ের রঙ স্পর্শ করুন:" : "TAP THE PHYSICAL FONT COLOR:"}
+                            </p>
+                            
+                            {/* The Stroop Display word */}
+                            <motion.h1 
+                              key={stroopWord + stroopColor}
+                              initial={{ scale: 0.8, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              className="text-4xl font-extrabold uppercase tracking-wide px-4 py-2"
+                              style={{ 
+                                color: stroopColor === 'SAGE' ? '#A7C7E7' : 
+                                       stroopColor === 'PURPLE' ? '#C084FC' : 
+                                       stroopColor === 'BLUE' ? '#60A5FA' : '#FB923C'
+                              }}
+                            >
+                              {lang === 'bn' ? 
+                                (stroopWord === 'SAGE' ? 'ধূসর সবুজ' : stroopWord === 'PURPLE' ? 'বেগুনি' : stroopWord === 'BLUE' ? 'নীল' : 'কমলা') : 
+                                stroopWord}
+                            </motion.h1>
+                          </div>
+
+                          {/* Options grid */}
+                          <div className="grid grid-cols-2 gap-2 mt-4">
+                            {['SAGE', 'PURPLE', 'BLUE', 'ORANGE'].map((opt) => (
+                              <button
+                                key={opt}
+                                onClick={() => {
+                                  if (opt === stroopColor) {
+                                    setGame2Score((s) => s + 1);
+                                    triggerNotification(lang === 'bn' ? "একদম সঠিক!" : "Correct Alignment!", "success");
+                                    generateStroopRound();
+                                  } else {
+                                    triggerNotification(lang === 'bn' ? "ভুল সংযোগ! রঙের লিখা লক্ষ্য করুন" : "Wrong! Tap text color, not word spelling.", "error");
+                                    generateStroopRound();
+                                  }
+                                }}
+                                className="py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-[10px] font-black tracking-widest uppercase text-white cursor-pointer transition-all active:scale-95"
+                              >
+                                {lang === 'bn' ? 
+                                  (opt === 'SAGE' ? 'ধূসর সবুজ' : opt === 'PURPLE' ? 'বেগুনি' : opt === 'BLUE' ? 'নীল' : 'কমলা') : 
+                                  opt}
+                              </button>
+                            ))}
+                          </div>
+
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0 flex flex-col justify-center items-center text-center p-6 space-y-4">
+                          <div className="p-3 w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 flex items-center justify-center mx-auto">
+                            <Brain size={24} className="animate-pulse text-[#A7C7E7]" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-white">{lang === 'bn' ? 'অরা স্ট্রেপ হারমনি' : 'Aura Shifting Harmony'}</h4>
+                            <p className="text-[10px] text-white/50 mt-1 max-w-sm">
+                              {lang === 'bn' ? 'শব্দের বানান নয়, বরং শব্দের রঙটি লক্ষ্য করে সঠিক বোতামটি নির্বাচন করুন। ব্রেইন হ্যামিস্ফিয়ার ব্যালেন্স টেস্ট!' : 'Tests hemispheric sync. Click the button matching the physical font COLOR, ignoring the written word spelling.'}
+                            </p>
+                          </div>
+                          <button
+                            onClick={startStroopGame}
+                            className="px-6 py-2.5 bg-purple-600 text-white font-extrabold uppercase tracking-widest text-[10px] rounded-xl cursor-pointer hover:bg-purple-700"
+                          >
+                            {lang === 'bn' ? 'স্ট্রেপ সেশন শুরু করুন' : 'Begin Stroop Training'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+
+                  {/* GAME 3: COSMIC SEQUENCE SIMON MEMORY VIEWPORT */}
+                  {activeGameId === 'sequence' && (
+                    <div className="w-full h-full flex flex-col justify-center items-center text-center">
+                      {isPlayingGame3 ? (
+                        <div className="w-full h-full flex flex-col justify-between p-2">
+                          
+                          {/* HUD bar */}
+                          <div className="flex justify-between px-3 py-1.5 rounded-xl bg-black/60 border border-white/5 text-[9px] font-black w-full mb-2">
+                            <span className="text-orange-300">ZEN PATH LEVEL: {game3Score}</span>
+                            <span className={sequenceStep === 'show' ? "text-amber-400 animate-pulse font-extrabold" : "text-green-400 font-extrabold"}>
+                              {sequenceStep === 'show' ? (lang === 'bn' ? 'স্মরণ করুন...' : 'REMEMBER SEQUENCE...') : (lang === 'bn' ? 'আপনার সেশন...' : 'TAP CORRESPONDING SEQUENCE!')}
+                            </span>
+                          </div>
+
+                          {/* 4 Large Simon node Quadrants */}
+                          <div className="grid grid-cols-2 gap-3 w-full max-w-xs mx-auto my-auto aspect-square">
+                            {[
+                              { label: 1, colorClass: 'border-[#A7C7E7]', activeClass: 'bg-[#A7C7E7] shadow-lg shadow-[#A7C7E7]/40 ring-4 ring-[#A7C7E7]/25 scale-105', idleClass: 'bg-[#A7C7E7]/15 hover:bg-[#A7C7E7]/25' },
+                              { label: 2, colorClass: 'border-[#C084FC]', activeClass: 'bg-[#C084FC] shadow-lg shadow-[#C084FC]/40 ring-4 ring-[#C084FC]/25 scale-105', idleClass: 'bg-[#C084FC]/15 hover:bg-[#C084FC]/25' },
+                              { label: 3, colorClass: 'border-[#60A5FA]', activeClass: 'bg-[#60A5FA] shadow-lg shadow-[#60A5FA]/40 ring-4 ring-[#60A5FA]/25 scale-105', idleClass: 'bg-[#60A5FA]/15 hover:bg-[#60A5FA]/25' },
+                              { label: 4, colorClass: 'border-[#FB923C]', activeClass: 'bg-[#FB923C] shadow-lg shadow-[#FB923C]/40 ring-4 ring-[#FB923C]/25 scale-105', idleClass: 'bg-[#FB923C]/15 hover:bg-[#FB923C]/25' }
+                            ].map((node) => {
+                              const isFlashed = activeSequenceFlash === node.label;
+                              return (
+                                <button
+                                  key={node.label}
+                                  onClick={() => onMemoryNodeClick(node.label)}
+                                  disabled={sequenceStep !== 'input'}
+                                  className={`border rounded-2xl transition-all cursor-pointer flex items-center justify-center text-[#90A5A9] text-xs font-black ${node.colorClass} ${
+                                    isFlashed ? node.activeClass : node.idleClass
+                                  }`}
+                                >
+                                  <span className="text-white text-lg font-black">{node.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                        </div>
+                      ) : (
+                        <div className="absolute inset-0 flex flex-col justify-center items-center text-center p-6 space-y-4">
+                          <div className="p-3 w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 flex items-center justify-center mx-auto">
+                            <Infinity size={24} className="animate-spin text-orange-400" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-white">{lang === 'bn' ? 'জেন পাথ মেমোরি সিকোয়েন্স' : 'Cosmic Path Memory Sequence'}</h4>
+                            <p className="text-[10px] text-white/50 mt-1 max-w-sm">
+                              {lang === 'bn' ? '৪টি রঙিন এনার্জি নোডের ক্রমানুসারে জ্বলে ওঠার প্যাটার্নটি হুবহু পুনরায় স্পর্শ করে স্মরণ শক্তি বাড়ান।' : 'Supercharge working memory. Watch the generated sequence of energy nodes and replicate it exactly.'}
+                            </p>
+                          </div>
+                          <button
+                            onClick={startMemoryGameLevel}
+                            className="px-6 py-2.5 bg-orange-500 text-white font-extrabold uppercase tracking-widest text-[10px] rounded-xl cursor-pointer hover:bg-orange-600"
+                          >
+                            {lang === 'bn' ? 'জেন সিকোয়েন্স শুরু করুন' : 'Align Cosmic Memory Path'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                </div>
+
+                <div className="text-[9px] uppercase tracking-widest font-black text-rose-400">
+                  {lang === 'bn' ? '৩ বার সেশন কমপ্লিট করার পরে নতুন গেম স্বয়ংক্রিয়ভাবে খুলে যাবে।' : 'Every completed session adds gameplay counters. Master the aura!'}
+                </div>
+              </div>
+
+              </motion.div>
+            )
+          )}
+        </AnimatePresence>
+      </main>
+
+      {/* Subscription Pricing Grid Panel with Premium Modals */}
+      {activeTab === 'dashboard' && (
+        <section id="pricing" className="px-4 sm:px-6 py-20 relative overflow-hidden z-10 border-t border-white/5 bg-black/40">
+          <div className="max-w-7xl mx-auto space-y-12">
+            
+            <div className="text-center space-y-3">
+              <div className="text-sage font-black text-[10px] tracking-[0.5em] uppercase">{currentT.pricingTitle}</div>
+              <h2 className="text-3xl sm:text-5xl font-serif tracking-tight font-black uppercase text-white leading-none">
+                {currentT.successPlan}
+              </h2>
+              <p className="text-xs text-white/45 max-w-sm mx-auto">{lang === 'bn' ? 'আপনার মানসিক সুস্থতা যাত্রা সহজ করতে বেছে নিন সেরা প্ল্যান।' : 'Calibrate your daily wellness flow with our advanced modular packages.'}</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto">
+              {pricingPlans.map((plan) => (
+                <motion.div 
+                  key={plan.id} 
+                  whileHover={{ y: -6 }} 
+                  onClick={() => setViewingPlan(plan)}
+                  className={`p-8 rounded-[36px] border ${plan.color} relative overflow-hidden flex flex-col justify-between text-left cursor-pointer transition-all group`}
+                >
+                  {plan.featured && (
+                    <div className="absolute top-6 right-6 bg-sage text-black px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-wider">
+                      {lang === 'bn' ? 'সেরা অফার' : 'BEST VALUE'}
+                    </div>
+                  )}
+
+                  <div className="space-y-6">
+                    {/* Plan Top */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-xl font-serif font-black text-white uppercase">{plan.title}</h3>
+                        <Info className="w-4 h-4 text-white/20 group-hover:text-sage transition-colors" />
+                      </div>
+                      <p className="text-sage text-[10px] font-black uppercase tracking-widest">{plan.outcome}</p>
+                    </div>
+
+                    {/* Pricing tier */}
+                    <div className="space-y-1">
+                      <div className="text-4xl font-extrabold text-white">{plan.price}</div>
+                      <div className="text-[9px] text-white/30 uppercase tracking-widest">per month / billed annually</div>
+                    </div>
+
+                    {/* Brief Description */}
+                    <p className="text-xs text-white/50 leading-relaxed font-light font-serif italic">
+                      "{plan.description}"
+                    </p>
+
+                    <div className="w-full h-px bg-white/5" />
+
+                    {/* Quick features checkboxes list */}
+                    <div className="space-y-3">
+                      <span className="text-[9px] font-black uppercase tracking-wider text-white/20">WHAT\'S INCLUDED:</span>
+                      <div className="space-y-2.5">
+                        {plan.features.slice(0, 3).map((feat, i) => (
+                          <div key={i} className="flex items-center gap-2.5 text-[10px] font-bold uppercase tracking-wide text-white/70">
+                            <div className="w-4 h-4 rounded-md bg-sage/15 flex items-center justify-center border border-sage/20 text-sage">
+                              <CheckCircle size={10} />
+                            </div>
+                            <span className="truncate">{feat}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setCheckoutPlan(plan); }}
+                    className={`w-full h-14 rounded-2xl mt-8 font-black uppercase tracking-widest text-[10px] transition-all cursor-pointer ${
+                      plan.featured 
+                        ? 'bg-sage text-black shadow-lg shadow-sage/10 hover:bg-sage/90' 
+                        : 'bg-white/5 text-white border border-white/10 hover:bg-white/10'
+                    }`}
+                  >
+                    {currentT.getStarted}
+                  </button>
+                </motion.div>
+              ))}
+            </div>
+
+          </div>
+        </section>
       )}
 
-      {/* Plan Details Modal */}
+      {/* Plan Details modal panel (Liquid Glass aesthetic) */}
       <AnimatePresence>
         {viewingPlan && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[700] bg-black/90 backdrop-blur-3xl flex items-center justify-center p-4 sm:p-6">
+          <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setViewingPlan(null)}
+              className="fixed inset-0 bg-black/85 backdrop-blur-md" 
+            />
+            
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-bg border border-white/10 w-full max-w-lg rounded-[48px] overflow-hidden shadow-2xl relative"
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className="bg-[#0b0c10]/95 border border-white/10 w-full max-w-lg rounded-[40px] overflow-hidden shadow-2xl relative z-10"
             >
-              <button onClick={() => setViewingPlan(null)} className="absolute top-8 right-8 p-3 hover:bg-white/5 rounded-2xl text-white/20 hover:text-white transition-all"><X className="w-6 h-6" /></button>
-              
-              <div className="p-8 sm:p-12 space-y-8 sm:space-y-12">
+              {/* Close trigger button */}
+              <button 
+                onClick={() => setViewingPlan(null)} 
+                className="absolute top-6 right-6 p-2 rounded-xl bg-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+
+              <div className="p-8 sm:p-10 space-y-6">
+                <div className="space-y-2">
+                  <div className="text-sage font-black text-[9px] tracking-[0.4em] uppercase">{lang === 'bn' ? 'প্ল্যান বিস্তারিত' : 'PLAN DETAILS'}</div>
+                  <h2 className="text-2xl sm:text-3xl font-serif font-black text-white uppercase">{viewingPlan.title}</h2>
+                  <p className="text-xs text-white/40 font-bold uppercase tracking-widest">{viewingPlan.outcome} — {viewingPlan.price}/month</p>
+                </div>
+
+                {/* Plan outcome quote block */}
+                <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-2 text-left">
+                  <p className="text-sm font-serif italic text-white/85 leading-relaxed">"{viewingPlan.description}"</p>
+                </div>
+
                 <div className="space-y-4">
-                  <div className="text-sage font-black text-[10px] uppercase tracking-[0.4em]">{lang === 'bn' ? 'প্ল্যান বিস্তারিত' : 'PLAN DETAILS'}</div>
-                  <h2 className="text-3xl sm:text-4xl font-serif font-black tracking-tighter text-white uppercase">{viewingPlan.title}</h2>
-                </div>
-
-                <div className="p-8 bg-white/5 rounded-[32px] border border-white/5 space-y-4">
-                  <p className="text-lg font-serif italic text-white/80 leading-relaxed">"{viewingPlan.description}"</p>
-                  <p className="text-xs text-white/30 uppercase font-black tracking-widest">{viewingPlan.outcome}</p>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">{lang === 'bn' ? 'ফিচারসমূহ:' : 'WHAT\'S INCLUDED:'}</div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {viewingPlan.features.map((f: any, i: number) => (
-                      <div key={i} className="flex items-center gap-3 text-[10px] font-black text-white/60 uppercase tracking-widest">
-                        <div className="w-5 h-5 bg-sage/10 rounded-lg flex items-center justify-center"><CheckCircle className="w-3 h-3 text-sage" /></div>
-                        {f}
+                  <div className="text-[10px] font-black text-white/30 uppercase tracking-[0.25em]">{lang === 'bn' ? 'ফিচারসমূহ:' : 'WHAT\'S EXTRA INCLUDED:'}</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-left">
+                    {viewingPlan.features.map((f: string, i: number) => (
+                      <div key={i} className="flex items-center gap-2.5 text-[10px] font-bold text-white/75 uppercase tracking-wider">
+                        <div className="w-5 h-5 bg-sage/10 rounded-lg flex items-center justify-center border border-sage/20"><CheckCircle size={11} className="text-sage" /></div>
+                        <span>{f}</span>
                       </div>
                     ))}
                   </div>
@@ -2278,69 +2871,309 @@ export default function App() {
 
                 <button 
                   onClick={() => { setCheckoutPlan(viewingPlan); setViewingPlan(null); }}
-                  className="w-full h-20 rounded-[28px] bg-sage text-black font-black uppercase tracking-[0.2em] text-xs hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-sage/20"
+                  className="w-full h-14 mt-4 rounded-2xl bg-sage text-black font-black uppercase tracking-[0.2em] text-xs hover:scale-[1.01] active:scale-95 transition-all shadow-xl shadow-sage/10 cursor-pointer"
                 >
-                  {currentT.getStarted} - {viewingPlan.price}/mo
+                  {currentT.getStarted} - {viewingPlan.price}
                 </button>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
-      {/* Payment Options Modal */}
+      {/* Checkout secure payment option popup modal (requested by user) */}
       <AnimatePresence>
         {checkoutPlan && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[800] bg-black/90 backdrop-blur-3xl flex items-center justify-center p-4 sm:p-6">
+          <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
             <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setCheckoutPlan(null)}
+              className="fixed inset-0 bg-black/90 backdrop-blur-md" 
+            />
+            
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="bg-bg border border-white/10 w-full max-w-sm rounded-[48px] overflow-hidden shadow-2xl relative"
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className="bg-[#070710]/95 border border-white/10 w-full max-w-sm rounded-[40px] overflow-hidden shadow-2xl relative z-10 text-center"
             >
-              <button onClick={() => setCheckoutPlan(null)} className="absolute top-8 right-8 p-3 hover:bg-white/5 rounded-2xl text-white/20 hover:text-white transition-all"><X className="w-6 h-6" /></button>
-              
-              <div className="p-8 sm:p-12 text-center space-y-10 sm:space-y-12">
-                <div className="space-y-4">
-                  <div className="text-sage font-black text-[10px] uppercase tracking-[0.4em]">{lang === 'bn' ? 'পেমেন্ট সম্পন্ন করুন' : 'COMPLETE PAYMENT'}</div>
-                  <h2 className="text-2xl sm:text-3xl font-serif font-black tracking-tighter text-white uppercase">{checkoutPlan.title}</h2>
-                  <div className="text-4xl font-black text-white">{checkoutPlan.price}<span className="text-sm text-white/20 font-medium">/mo</span></div>
+              {/* Close trigger button */}
+              <button 
+                onClick={() => setCheckoutPlan(null)} 
+                className="absolute top-6 right-6 p-2 rounded-xl bg-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+
+              <div className="p-8 sm:p-10 space-y-8">
+                <div className="space-y-2">
+                  <div className="text-sage font-black text-[9px] tracking-[0.4em] uppercase">{lang === 'bn' ? 'পেমেন্ট সম্পন্ন করুন' : 'COMPLETE TRANSACTION'}</div>
+                  <h2 className="text-xl sm:text-2xl font-serif font-black text-white uppercase">{checkoutPlan.title}</h2>
+                  <div className="text-3xl font-extrabold text-white">{checkoutPlan.price}<span className="text-xs text-white/30 font-medium">/mo</span></div>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="text-[10px] font-black text-white/20 uppercase tracking-[0.3em]">{lang === 'bn' ? 'পেমেন্ট মেথড বেছে নিন' : 'CHOOSE PAYMENT METHOD'}</div>
+                <div className="space-y-3.5">
+                  <span className="text-[10px] font-black text-white/30 uppercase tracking-widest block">{lang === 'bn' ? 'পেমেন্ট মেথড বেছে নিন' : 'CHOOSE PAYMENT GATEWAY'}</span>
                   
-                  <button className="w-full h-16 sm:h-20 bg-[#E2136E]/10 border border-[#E2136E]/20 rounded-2xl flex items-center px-8 gap-4 hover:bg-[#E2136E]/20 transition-all group">
-                    <div className="w-10 h-10 bg-[#E2136E] rounded-xl flex items-center justify-center font-black text-white">b</div>
-                    <div className="flex-1 text-left font-black text-[#E2136E] uppercase tracking-widest text-[10px]">bKash</div>
-                    <ArrowRight className="w-4 h-4 text-[#E2136E] opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0" />
+                  {/* bKash Integration option */}
+                  <button 
+                    onClick={() => { triggerNotification("bKash API loaded: Simulating secure checkout...", "success"); setCheckoutPlan(null); }}
+                    className="w-full h-16 bg-[#E2136E]/10 border border-[#E2136E]/20 rounded-2xl flex items-center px-5 gap-3.5 hover:bg-[#E2136E]/15 transition-all group cursor-pointer"
+                  >
+                    <div className="w-9 h-9 bg-[#E2136E] rounded-xl flex items-center justify-center font-extrabold text-white text-sm">b</div>
+                    <div className="flex-1 text-left font-black text-[#E2136E] uppercase tracking-widest text-[9px]">bKash Checkout</div>
+                    <ArrowRight className="w-3.5 h-3.5 text-[#E2136E] opacity-0 group-hover:opacity-100 transition-all translate-x-[-5px] group-hover:translate-x-0" />
                   </button>
 
-                  <button className="w-full h-16 sm:h-20 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center px-8 gap-4 hover:bg-blue-500/20 transition-all group">
-                    <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center"><CreditCard className="w-5 h-5 text-white" /></div>
-                    <div className="flex-1 text-left font-black text-blue-400 uppercase tracking-widest text-[10px]">{lang === 'bn' ? 'কার্ড' : 'CARD'}</div>
-                    <ArrowRight className="w-4 h-4 text-blue-400 opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0" />
+                  {/* Card transaction option */}
+                  <button 
+                    onClick={() => { triggerNotification("Card Processor loaded: Simulating secure checkout...", "success"); setCheckoutPlan(null); }}
+                    className="w-full h-16 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center px-5 gap-3.5 hover:bg-blue-500/15 transition-all group cursor-pointer"
+                  >
+                    <div className="w-9 h-9 bg-blue-500 rounded-xl flex items-center justify-center text-white"><CreditCard size={15} /></div>
+                    <div className="flex-1 text-left font-black text-blue-400 uppercase tracking-widest text-[9px]">{lang === 'bn' ? 'কার্ডে পেমেন্ট' : 'Credit / Debit Card'}</div>
+                    <ArrowRight className="w-3.5 h-3.5 text-blue-400 opacity-0 group-hover:opacity-100 transition-all translate-x-[-5px] group-hover:translate-x-0" />
                   </button>
 
-                  <button className="w-full h-16 sm:h-20 bg-white/5 border border-white/10 rounded-2xl flex items-center px-8 gap-4 hover:bg-white/10 transition-all group">
-                    <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center font-black text-white">G</div>
-                    <div className="flex-1 text-left font-black text-white/60 uppercase tracking-widest text-[10px]">Google Pay</div>
-                    <ArrowRight className="w-4 h-4 text-white/40 opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0" />
+                  {/* Google Pay option */}
+                  <button 
+                    onClick={() => { triggerNotification("Google Pay initialized: Simulating secure checkout...", "success"); setCheckoutPlan(null); }}
+                    className="w-full h-16 bg-white/5 border border-white/10 rounded-2xl flex items-center px-5 gap-3.5 hover:bg-white/10 transition-all group cursor-pointer"
+                  >
+                    <div className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center font-extrabold text-white text-[11px]">G</div>
+                    <div className="flex-1 text-left font-black text-white/70 uppercase tracking-widest text-[9px]">Google Pay</div>
+                    <ArrowRight className="w-3.5 h-3.5 text-white/50 opacity-0 group-hover:opacity-100 transition-all translate-x-[-5px] group-hover:translate-x-0" />
                   </button>
                 </div>
 
-                <p className="text-[8px] text-white/20 font-black uppercase tracking-widest leading-relaxed">
-                  {lang === 'bn' ? 'আপনার পেমেন্ট সুরক্ষিত এবং এনক্রিপ্টেড।' : 'Your payment is secure and encrypted.'}
+                <p className="text-[8px] text-white/30 font-black uppercase tracking-widest leading-loose">
+                  {lang === 'bn' ? 'আপনার সেশন সুরক্ষিত এবং এনক্রিপ্ট করা।' : 'Your digital biofields and payments are fully encrypted.'}
                 </p>
               </div>
             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Diagnostic & Mystical Mystery Card Modal Popup (requested by user) */}
+      <AnimatePresence>
+        {showDiagnosticPopup && (
+          <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              className="fixed inset-0 bg-black/95 backdrop-blur-md" 
+            />
+            
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-[#0b0b18]/95 border border-purple-500/20 w-full max-w-2xl rounded-[40px] shadow-2xl shadow-purple-500/10 relative z-10 overflow-hidden text-center max-h-[90vh] flex flex-col"
+            >
+              {/* Top ambient colored light beam */}
+              <div className="absolute top-0 inset-x-0 h-48 bg-gradient-to-b from-purple-500/15 via-pink-500/5 to-transparent pointer-events-none" />
+
+              <div className="p-6 sm:p-10 flex-1 overflow-y-auto space-y-6 sm:space-y-8 flex flex-col justify-between">
+                
+                {/* SUB-STEP 1: CHOICE OF HEAR OR READ */}
+                {popupSubStep === 'choice' && (
+                  <div className="my-auto space-y-8 py-4">
+                    <div className="space-y-3.5">
+                      <div className="text-pink-400 font-extrabold text-[10px] tracking-[0.5em] uppercase">
+                        {lang === 'bn' ? 'আভা প্রতিফলন প্রস্তুতি' : 'AURA RESONANCE READY'}
+                      </div>
+                      <h2 className="text-2xl sm:text-3xl font-serif font-black text-white leading-tight">
+                        {lang === 'bn' ? 'আপনার আভা প্রতিবেদন প্রস্তুত!' : 'Your Quantum Feedback is Ready'}
+                      </h2>
+                      <p className="text-xs text-white/50 max-w-sm mx-auto leading-relaxed">
+                        {lang === 'bn' 
+                          ? 'অরা আজকে আপনার এই ফ্রেম বা ভয়েস থেকে আপনার আধ্যাত্মিক স্পন্দন বিশ্লেষণ করেছে। আপনি এটি কিভাবে গ্রহণ করতে চান?' 
+                          : 'Aura has successfully mapped your life force vibration for this millisecond. How would you like to receive it?'}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto">
+                      {/* Option 1: Hear Guidance */}
+                      <button
+                        onClick={() => {
+                          setTtsOption('speak');
+                          setPopupSubStep('cards');
+                        }}
+                        className="p-6 sm:p-8 rounded-3xl bg-purple-500/5 hover:bg-purple-500/10 border border-purple-500/20 hover:border-purple-400/40 text-center space-y-4 group transition-all transform hover:-translate-y-1 cursor-pointer flex flex-col items-center justify-center"
+                      >
+                        <div className="w-14 h-14 bg-purple-500/15 border border-purple-500/20 rounded-2xl flex items-center justify-center text-purple-300 group-hover:scale-110 transition-transform">
+                          <Volume2 size={24} className="animate-pulse" />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-black text-white uppercase tracking-wider">
+                            {lang === 'bn' ? 'ভয়েস শুনুন' : 'Listen to Aura'}
+                          </h4>
+                          <p className="text-[10px] text-white/40 leading-normal max-w-[180px] mx-auto">
+                            {lang === 'bn' ? 'অরা সহচরের ভয়েস দিয়ে আপনার প্রতিফলন শুনুন।' : 'Let Aura companion speak your diagnostic evaluation aloud.'}
+                          </p>
+                        </div>
+                      </button>
+
+                      {/* Option 2: Read Silence */}
+                      <button
+                        onClick={() => {
+                          setTtsOption('read');
+                          setPopupSubStep('cards');
+                        }}
+                        className="p-6 sm:p-8 rounded-3xl bg-pink-500/5 hover:bg-pink-500/10 border border-pink-500/20 hover:border-pink-400/40 text-center space-y-4 group transition-all transform hover:-translate-y-1 cursor-pointer flex flex-col items-center justify-center"
+                      >
+                        <div className="w-14 h-14 bg-pink-500/15 border border-pink-500/20 rounded-2xl flex items-center justify-center text-pink-300 group-hover:scale-110 transition-transform">
+                          <FileText size={24} />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-black text-white uppercase tracking-wider">
+                            {lang === 'bn' ? 'লেখা পড়ুন' : 'Read Text Only'}
+                          </h4>
+                          <p className="text-[10px] text-white/40 leading-normal max-w-[180px] mx-auto">
+                            {lang === 'bn' ? 'গভীর ধ্যান ও নীরবতার মাঝে আপনার প্রতিফলন রিপোর্টটি পড়ুন।' : 'Read your spiritual report in complete quiet mindfulness.'}
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* SUB-STEP 2: ENERGETIC MYSTERY CARDS */}
+                {popupSubStep === 'cards' && (
+                  <div className="space-y-6 flex flex-col justify-between flex-1 md:py-4">
+                    <div className="space-y-2">
+                      <div className="text-pink-400 font-extrabold text-[10px] tracking-[0.5em] uppercase">
+                        {lang === 'bn' ? 'অনুপ্রেরণা রহস্য কার্ড' : 'MYSTIC ALIGNMENT GATEWAY'}
+                      </div>
+                      <h2 className="text-xl sm:text-2xl font-serif font-black text-white uppercase">
+                        {lang === 'bn' ? 'একটি অনুপ্রেরণা কার্ড চয়ন করুন' : 'Unlock Your Healing Coordinate'}
+                      </h2>
+                      <p className="text-[10px] text-white/50 max-w-sm mx-auto leading-normal">
+                        {lang === 'bn'
+                          ? 'আপনার অভ্যন্তরীণ শক্তি প্রবাহ উন্মোচন করতে এবং মূল ডায়াগনস্টিক নোট দেখতে নিচের যেকোনো একটি কার্ড স্পর্শ করুন।'
+                          : 'Select exactly one sacred mystery card below to reveal your daily soul-alignment advice.'}
+                      </p>
+                    </div>
+
+                    {/* Mystery Cards Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-xl mx-auto w-full py-2">
+                      {MYSTERY_CARDS.map((card) => {
+                        const isSelected = selectedMysteryCard === card.id;
+                        return (
+                          <motion.div
+                            key={card.id}
+                            onClick={() => setSelectedMysteryCard(card.id)}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className={`relative h-32 rounded-2xl border cursor-pointer p-3 sm:p-4 flex flex-col justify-center items-center overflow-hidden transition-all duration-300 ${card.color} ${card.borderColor} ${
+                              isSelected 
+                                ? `ring-2 ring-pink-400 bg-opacity-30 ${card.glow}` 
+                                : 'opacity-80 hover:opacity-100'
+                            }`}
+                          >
+                            <AnimatePresence mode="wait">
+                              {!isSelected ? (
+                                <motion.div 
+                                  key="front"
+                                  initial={{ opacity: 0 }} 
+                                  animate={{ opacity: 1 }} 
+                                  exit={{ opacity: 0 }}
+                                  className="text-center space-y-1"
+                                >
+                                  <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 mx-auto flex items-center justify-center text-pink-300">
+                                    <Sparkles size={12} className="animate-pulse" />
+                                  </div>
+                                  <div className="text-[9px] font-black uppercase tracking-widest text-white mt-1 pt-0.5">
+                                    {lang === 'bn' ? 'রহস্য কার্ড' : 'MYSTERY'}
+                                  </div>
+                                  <div className="text-[8px] text-pink-400/60 uppercase tracking-widest font-mono">
+                                    #{card.id}0{card.id}
+                                  </div>
+                                </motion.div>
+                              ) : (
+                                <motion.div 
+                                  key="back"
+                                  initial={{ opacity: 0, rotateY: 180 }} 
+                                  animate={{ opacity: 1, rotateY: 0 }} 
+                                  exit={{ opacity: 0 }}
+                                  className="text-center flex flex-col items-center justify-center w-full h-full"
+                                >
+                                  <div className="text-[9px] font-black uppercase text-pink-300 border-b border-pink-400/20 pb-0.5 mb-1.5 truncate max-w-full">
+                                    {lang === 'bn' ? card.titleBn : card.titleEn}
+                                  </div>
+                                  <p className="text-[9px] text-white/90 leading-normal line-clamp-3 font-serif italic">
+                                    "{lang === 'bn' ? card.descBn : card.descEn}"
+                                  </p>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Bottom Action reveal trigger */}
+                    <div className="pt-2">
+                      <button
+                        onClick={() => {
+                          if (selectedMysteryCard === null) {
+                            triggerNotification(lang === 'bn' ? "অনুগ্রহ করে আগে যেকোনো একটি রহস্য কার্ড নির্বাচন করুন!" : "Please select a mystery card first!", "error");
+                            return;
+                          }
+                          // Proceed and Reveal the feedback!
+                          setScanReflection(tempReflection);
+                          setShowDiagnosticPopup(false);
+                          
+                          // Explicit speak trigger if chosen
+                          if (ttsOption === 'speak') {
+                            speakNow(tempReflection);
+                          }
+                          triggerNotification(lang === 'bn' ? "অভিনন্দন! আপনার মানসিক আভা প্রতিবেদন খোলা হয়েছে।" : "Inspiration Unlocked! Aura evaluation revealed below.", "success");
+                        }}
+                        disabled={selectedMysteryCard === null}
+                        className={`w-full max-w-sm mx-auto h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                          selectedMysteryCard !== null
+                            ? 'bg-gradient-to-r from-pink-500 to-purple-500 font-extrabold text-white animate-pulse shadow-lg shadow-pink-500/20'
+                            : 'bg-white/5 border border-white/10 text-white/30 disabled:pointer-events-none'
+                        }`}
+                      >
+                        <Sparkles size={11} />
+                        <span>{lang === 'bn' ? 'আভা বিশ্লেষণ উন্মুক্ত করুন' : 'Reveal Diagnostic Note'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Global Notifications Banner */}
+      <AnimatePresence>
+        {showNotification && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50, x: '-50%' }} 
+            animate={{ opacity: 1, y: 0, x: '-50%' }} 
+            exit={{ opacity: 0, y: 20, x: '-50%' }} 
+            className={`fixed bottom-8 left-1/2 z-[100] px-6 py-4 rounded-[20px] shadow-2xl flex items-center gap-3 border ${
+              showNotification.type === 'success' ? 'bg-sage text-black border-sage' : 'bg-red-500 text-white border-red-400'
+            }`}
+          >
+            {showNotification.type === 'success' ? <Sparkles size={16} /> : <Lock size={16} />}
+            <span className="font-extrabold uppercase tracking-wider text-[10px]">{showNotification.message}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Version Footer */}
-      <div className="fixed bottom-4 right-4 z-50 pointer-events-none opacity-20">
-        <span className="text-[8px] font-black uppercase tracking-widest text-white">v1.0.2</span>
+      {/* Fixed bottom version label and watermarks */}
+      <div className="fixed bottom-4 right-4 z-40 pointer-events-none opacity-25">
+        <span className="text-[8px] font-black uppercase tracking-widest text-white">v1.1.0 — Aura Activated</span>
       </div>
     </div>
   );

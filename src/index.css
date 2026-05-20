@@ -1,26 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=Inter:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
-@theme {
-  --font-serif: "DM Sans", sans-serif;
-  --font-sans: "Inter", sans-serif;
-  
-  /* Sophisticated Soft Dark Theme */
-  --color-bg: #0a0f0d; /* Deep Forest Black */
-  --color-sage: #a3e635; /* Soft Lime */
-  --color-sage-light: #16201b; 
-  --color-ink: #f1f5f9; /* Slate 100 for better contrast */
-  --color-clay: #fbbf24; /* Amber 400 */
+* {
+  font-family: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-@layer base {
-  body {
-    @apply bg-bg text-ink font-sans antialiased overflow-x-hidden;
-    background-image: 
-      radial-gradient(circle at 10% 20%, rgba(163, 230, 53, 0.03) 0%, transparent 40%),
-      radial-gradient(circle at 90% 80%, rgba(251, 191, 36, 0.03) 0%, transparent 40%);
-  }
-  h1, h2, h3, h4, .font-serif {
-    @apply font-serif;
-  }
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #000;
+  color: #fff;
+  overflow-x: hidden;
+}
+
+.liquid-glass {
+  background: rgba(255, 255, 255, 0.01);
+  background-blend-mode: luminosity;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: none;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.liquid-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.4px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.15) 20%, rgba(255, 255, 255, 0) 40%, rgba(255, 255, 255, 0) 60%, rgba(255, 255, 255, 0.15) 80%, rgba(255, 255, 255, 0.45) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
