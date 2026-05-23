@@ -33,21 +33,21 @@ async function startServer() {
   function getSpiritualFallback(type: string, mood: string, lang: string): string {
     const { activeChakra, freq } = runRandomModifier();
     if (lang === 'bn') {
-      if (mood === 'bad' || mood === 'stressed') {
-        return `আপনার অভ্যন্তরীণ চক্র বর্তমানে কিছু ঘন এবং মেঘযুক্ত শক্তি প্রবাহ প্রত্যক্ষ করছে (${freq}Hz স্পন্দন, সংযোগ: ${activeChakra})। আমি দেখতে পাচ্ছি আপনার অনাহত (হৃদয়) এবং বিশুদ্ধ (কণ্ঠ) চক্রটি কিছুটা বিভ্রান্ত বা ক্লান্ত। সহযাত্রী, ভয় পাবেন না—এই সাময়িক অন্ধকার আপনার মহাজাগতিক আত্মপ্রকাশের এক চমৎকার পূর্বপ্রস্তুতি মাত্র। আমি মহাকাশের গভীর থেকে আপনার আত্মিক শক্তিকে আহ্বান করছি: "আমিই মহাজাগতিক ঘূর্ণি, আমিই পরম শক্তি, কোনো জাগতিক মেঘ এই অন্তহীন শিখাকে নেভাতে পারবে না।" আপনার মেরুদণ্ড সোজা করুন, গভীর দুটি শ্বাস নিন এবং সেই পবিত্র অসীম সত্ত্বাকে অনুভব করুন যা সবসময় আপনার পাশে রয়েছে।`;
-      } else if (mood === 'calm') {
-        return `আপনার আভা বর্তমানে একটি প্রশান্ত এবং সতেজ নীল জ্যোতি বহন করছে (${freq}Hz প্রশান্তি ধারণ করে, ফোকাস: ${activeChakra})। আপনার বিশুদ্ধা ও আজ্ঞা চক্র একটি অতি সুন্দর মৃদু সুর সৃষ্টি করছে, যা আপনার চারপাশের বায়ুমণ্ডলকে পবিত্র ও সুদৃঢ় করে তুলছে। আপনি নিজের আত্মিক রাজত্বে সম্পূর্ণ অবিচল এবং শান্ত। এই পরম মহাজাগতিক নীরবতার মাঝে আপনার হৃদয়কে উন্মুক্ত করুন এবং আপনার ভেতরের শক্তির অনন্ত স্রোতকে প্রবাহিত হতে দিন। আপনার এই যাত্রা চিরন্তন, সুন্দর এবং সম্পূর্ণভাবে সুরক্ষিত।`;
-      } else { // good
-        return `আজ আপনার আভা জ্যোতির্ময় সোনালী আলোয় উজ্জ্বল হয়ে উঠেছে! (${freq}Hz ফ্রিকোয়েন্সি, সক্রিয়: ${activeChakra})। সহযাত্রী, আপনার মণিপুর চক্রটি এক পরম ঐশ্বরিক মহিমায় স্পন্দিত হচ্ছে যা আপনার অন্তরের শক্তিকে প্রসারিত করছে। সূর্য এবং নক্ষত্রমণ্ডলী যেন আপনার আত্মিক বিজয়ের সাথে একাত্মতা প্রকাশ করছে: "আমিই জ্যোতি, আমি প্রদীপ্ত শক্তি, আমিই ব্রহ্মাণ্ডের অপার স্পন্দন।" নিজের মুকুটটি সম্মানের সাথে ধারণ করে এগিয়ে চলুন; আজ আপনার অন্তহীন প্রাণময়তা চারপাশের মহাবিশ্বকে আলোকিত করেছে এবং শুভ সম্ভাবনার দ্বার উন্মুক্ত করেছে।`;
+      if (['bad', 'stressed', 'lonely', 'anxious', 'angry', 'tired', 'confused', 'heartbroken'].includes(mood)) {
+        return `মানসিক অবস্থা: বিষণ্ণ বা কিছুটা মেঘাচ্ছন্ন অনুভব করছেন (${activeChakra} ও ${freq}Hz স্পন্দন)।\nনিরাময় সমাধান: মেরুদণ্ড সোজা করে বসুন এবং ৩ বার বুক ভরে গভীর শ্বাস নিয়ে ধীরে ধীরে ছাড়ুন। সমাধান: মনে মনে ৫ বার জপ করুন— "আমি শান্ত, আমি সুরক্ষিত এবং আমি যেকোনো পরিস্থিতি জয় করতে সক্ষম।" নিজের শক্তি ফিরিয়ে আনার জন্য ১ গ্লাস স্বাভাবিক পানি পান করুন।`;
+      } else if (['calm', 'blessed'].includes(mood)) {
+        return `মানসিক অবস্থা: গভীর প্রশান্তি এবং শান্ত আভা বিরাজ করছে।\nনিরাময় সমাধান: চোখ জোড়া বন্ধ করে হৃদস্পন্দন অনুভব করার চেষ্টা করুন। সমাধান: আজকের সুন্দর দিনের জন্য মনে মনে সৃষ্টিকর্তাকে বা অবচেতন মনকে ধন্যবাদ জানান। আপনার এই পজিটিভ আভা চারপাশের অন্ধকারকে দূর করবে।`;
+      } else {
+        return `মানসিক অবস্থা: অত্যন্ত উৎফুল্ল, রোমাঞ্চিত এবং ইতিবাচক মনোভাব।\nনিরাময় সমাধান: আপনার শরীরে এক নতুন শক্তিশালী মহাজাগতিক স্পন্দনের সঞ্চার ঘটছে। সমাধান: এই সুন্দর প্রাণবন্ত এনার্জি ব্যবহার করে কোনো অসম্পূর্ণ কাজ গুছিয়ে ফেলুন বা প্রিয় কোনো গান শুনুন।`;
       }
     } else {
-      // English
-      if (mood === 'bad' || mood === 'stressed') {
-        return `Your energetic signature registers a dense, high-voltage static around ${freq}Hz, showing temporary wear in your ${activeChakra} focus. Do not fear this temporary eclipse; the darkest nights merely reveal the sovereign brilliance of your inner sun. I summon your cosmic shield: "I am unbroken, I am a radiant fortress, of infinite stellar power." Align your spine, pull energy from the earth's quiet core, and remember that you are a living universe in magnificent transit.`;
-      } else if (mood === 'calm') {
-        return `A majestic indigo tranquility flows gracefully through your biofield at ${freq}Hz, demonstrating perfect coherence in your ${activeChakra} channel. You are anchored in deep, ancient quietness, untroubled by the surface noise of the world. Trust this vast internal space; it is the sacred womb of your highest creations. Breathe softly, rest in your divine alignment, and know that you are beautifully, completely whole.`;
-      } else { // good
-        return `Your aura is blazing in a brilliant, high-frequency golden crown today measuring ${freq}Hz, with primary activation in your ${activeChakra}! Your Solar Plexus is radiating sovereign authority and unshakeable confidence across all levels of your life path. The universe echoes your magnificent expansion and declaration of victory: "I am light, I am boundless energy, I am the ultimate cosmic wave." Stand tall, claim your sacred power, and let your triumphant rhythm echo into eternity.`;
+      // English fallback
+      if (['bad', 'stressed', 'lonely', 'anxious', 'angry', 'tired', 'confused', 'heartbroken'].includes(mood)) {
+        return `Emotion State: Feeling heavy, anxious or clouded energy (${activeChakra} focus - ${freq}Hz).\nHealing Remedy: Sit comfortably and take 3 deep, slow breaths. Affirm mentally: "I am safe, I am powerful, and this short phase is leading me to peace." Focus on a small, comforting physical activity to ground yourself.`;
+      } else if (['calm', 'blessed'].includes(mood)) {
+        return `Emotion State: Smooth, balanced, and peaceful aura alignment.\nHealing Remedy: Rest your attention on your center, count 5 slow breathing cycles, and share this soothing positive wavelength with a loved one or friend today.`;
+      } else {
+        return `Emotion State: Radiant, high-energy vibes.\nHealing Remedy: Direct this magnificent joyful wavelength into a creative project or express appreciation/gratitude to someone who inspires you.`;
       }
     }
   }
@@ -156,18 +156,26 @@ Your requested prompt: "${prompt.slice(0, 50)}..." has been evaluated locally du
         Analyze the user's ${type} input under the simulated mood state: "${mood || 'neutral/as-is'}".
         
         CRITICAL RULES:
-        1. Tone and Mood Adaptation:
-           - If the mood is "bad" or "clouded/stressed/low", analyze and reflect their heavy, low-frequency, or clouded biofield realistically. It's okay to describe their struggles as dense or gloomy, but immediately pivot into a deeply empowering, passionate motivational speech or a mini-spiritual revolutionary manifesto to awaken their spiritual fire, dissolve fear, and help them rise from the density.
-           - If the mood is "good" or "joyful/inspired/radiant", celebrate their bright, high-frequency, golden state of mind with beautiful cosmic imagery. Give them a highly inspiring, glowing motivational speech/manifesto to expand their alignment further.
-        2. Delivery & Style:
-           - Response must be written in ${lang === 'bn' ? 'Bengali (using rich, poetic, evocative, and high-quality vocabulary)' : 'English'}.
-           - Must include motivational speeches, manifestos, or encouraging universal declarations of power (e.g. "I am resilient...", "আমিই শক্তি...").
-           - Make it extremely soulful, deep, poetic, and meaningful (4-6 robust sentences).
-           - Do not use clinical or medical terminology. Focus purely on aura energy, chakras, soul path, and inner power.
-        3. HIGH VARIETY AND UNIQUENESS:
-           - CRITICAL: Never start the response with same phrases! Change opening structures completely.
-           - Use the dynamic telemetry and seed coordinates provided in the content block to inspire varied spiritual advice.
-           - Generate a completely fresh and unique reflection every single time.
+        1. UNDERSTAND BENGLISH (Bengali written in Latin letters) & BENGALI:
+           - The user's input content can be written in English, Bengali, or "Benglish" (e.g., 'mon kharap khub amr', 'bhalo lagche na', 'tension hochhe', 'amar kosto hobe', 'ami khub rege achi', 'mon valo ache').
+           - You must flawlessly understand Benglish, translate it internally, and figure out the user's true emotional state.
+        
+        2. CONCISE & REMEDY-FOCUSED OUTPUT ("Eto boro naaa likha, sudhu solve korar/healer output"):
+           - Do NOT write long, winding, or massive poetic paragraphs. Keep it brief and direct.
+           - Focus primarily on providing an actionable solution/remedy to heal, improve, or manage the emotional state. How does this emotion get healed or corrected?
+           - Respond in ${lang === 'bn' ? 'Bengali' : 'English'}.
+           - Format the output exactly using this structure:
+             ${lang === 'bn' ? `
+             - **মানসিক অবস্থা / State**: [সর্বোচ্চ ১টি ছোট বাক্য - বর্তমান মনের ভাব বা শক্তির বিশ্লেষণ]
+             - **সংশোধন এবং নিরাময় / Healing Solution**: [১ থেকে ৩টি অত্যন্ত দরকারী এবং বাস্তবসম্মত পদক্ষেপ বা আধ্যাত্মিক ব্যায়াম যা এই মেজাজ বা পরিস্থিতি থেকে মুক্তি দিয়ে মন ভালো করতে সাহায্য করবে]
+             ` : `
+             - **Emotion State**: [Maximum 1 short sentence describing the user's focus/energy level]
+             - **Healing Solution**: [1 to 3 helpful, practical remedies, affirmations or exercises to resolve and heal this emotional state]
+             `}
+             
+        3. HIGH VARIETY & EMBODIED POWER:
+           - Tailor the remedy based on any available chakra and telemetry parameters if supplied.
+           - Ensure the solutions are supportive, motivating, encouraging, and deeply empathetic.
       `;
 
       const reflectionText = await generateTextWithFallback(

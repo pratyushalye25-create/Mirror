@@ -383,7 +383,7 @@ export default function App() {
   const [scanReflection, setScanReflection] = useState<string>("");
   const [scannerLoading, setScannerLoading] = useState(false);
   const [scannerMode, setScannerMode] = useState<'camera' | 'voice' | 'text'>('camera');
-  const [scanMood, setScanMood] = useState<'good' | 'bad' | 'calm' | 'stressed'>('good');
+  const [scanMood, setScanMood] = useState<string>('good');
   const [isRecordingVoice, setIsRecordingVoice] = useState(false);
   const [voiceSecs, setVoiceSecs] = useState(0);
   const [textScanInput, setTextScanInput] = useState("");
@@ -1186,118 +1186,175 @@ export default function App() {
       <div className="absolute top-24 left-1/4 w-96 h-96 rounded-full bg-sage/5 blur-3xl z-0 pointer-events-none animate-pulse" />
       <div className="absolute bottom-40 right-1/4 w-[500px] h-[500px] rounded-full bg-purple-500/5 blur-3xl z-0 pointer-events-none animate-pulse-slow" />
 
-      {/* Navbar Container */}
-      <nav id="navbar-main" className="sticky top-0 w-full z-40 bg-black/40 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-4 sm:px-8 py-4">
+      {/* Mobile Sticky Top Navbar */}
+      <nav id="navbar-mobile" className="sticky top-0 w-full z-40 bg-[#070710]/95 backdrop-blur-xl border-b border-white/10 flex items-center justify-between px-4 sm:px-6 py-4 md:hidden">
         {/* Core Logo and Edition */}
-        <div id="logo-container" className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-sage/30 to-purple-500/30 border border-white/10 flex items-center justify-center shadow-md">
-            <Infinity size={24} className="text-sage animate-pulse" strokeWidth={2} />
+        <div id="logo-container-mobile" className="flex items-center gap-2">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sage/30 to-purple-500/30 border border-white/10 flex items-center justify-center shadow-md">
+            <Infinity size={22} className="text-sage animate-pulse" strokeWidth={2} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold tracking-tight text-white text-lg sm:text-xl">MindMirror</span>
-              <span className="text-[9px] font-black tracking-widest text-[#A7C7E7] bg-white/5 uppercase border border-sage/30 px-2 py-0.5 rounded-md">PRATYUSHA</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-extrabold tracking-tight text-white text-base">MindMirror</span>
+              <span className="text-[8px] font-black tracking-widest text-[#A7C7E7] bg-white/5 uppercase border border-sage/30 px-1 py-0.5 rounded-md">PRATYUSHA</span>
             </div>
-            <p className="text-[10px] text-white/50 tracking-wider hidden md:block">Interactive Biofield & Spiritual Companion</p>
           </div>
-        </div>
-
-        {/* Unified Nav Pill bar with large grown fonts */}
-        <div id="nav-pill-desktop" className="hidden md:flex bg-black/50 border border-white/10 items-center gap-1.5 rounded-2xl p-1.5">
-          {[
-            { id: 'dashboard', label: currentT.tabDashboard, icon: <LayoutDashboard size={18} /> },
-            { id: 'mirror', label: currentT.tabMirror, icon: <Camera size={18} /> },
-            { id: 'coach', label: currentT.tabCoach, icon: <Compass size={18} /> },
-            { id: 'journal', label: currentT.tabJournal, icon: <Activity size={18} /> },
-            { id: 'playground', label: currentT.tabPlayground, icon: <Brain size={18} /> }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs xl:text-sm font-extrabold tracking-wider transition-all cursor-pointer ${
-                activeTab === tab.id 
-                  ? 'bg-sage text-black font-black shadow-lg shadow-sage/20 scale-[1.03] border border-sage' 
-                  : 'text-white hover:text-white hover:bg-white/10'
-              }`}
-            >
-              {tab.icon}
-              <span className="uppercase">{tab.label}</span>
-            </button>
-          ))}
         </div>
 
         {/* Global Controls and Sign-In Stats */}
-        <div className="flex items-center gap-3">
-          {/* Language selector */}
+        <div className="flex items-center gap-2">
+          {/* Quick Stats: Flame indicator */}
+          <div className="flex items-center gap-1 bg-white/5 border border-white/10 px-2.5 py-1.5 rounded-xl text-xs">
+            <Flame size={13} className="text-orange-400 fill-orange-400 animate-bounce" />
+            <span className="text-orange-400 font-extrabold">{streak}d</span>
+          </div>
+
+          {/* Quick Lang Select */}
           <button 
             onClick={() => {
               setLang(l => l === 'en' ? 'bn' : 'en');
               triggerNotification(lang === 'bn' ? "Language changed to English" : "ভাষা পরিবর্তন: বাংলা", 'success');
             }}
-            className="px-3 py-2 rounded-xl border border-white/15 text-xs font-black tracking-widest uppercase bg-white/5 hover:bg-white/10 cursor-pointer flex items-center gap-1.5 text-sage transition-all"
+            className="px-2 py-1.5 rounded-xl border border-white/15 text-[10px] font-black uppercase bg-white/5 text-sage cursor-pointer"
             title="Switch Language / ভাষা পরিবর্তন"
           >
-            <span className="text-sm">🌐</span> {lang === 'en' ? 'বাংলা' : 'ENG'}
+            {lang === 'en' ? 'বাং' : 'EN'}
           </button>
-
-          {/* User Status Badge / Leaderboard items */}
-          <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-2 rounded-xl text-xs shadow-inner">
-            <div className="flex items-center gap-1 text-orange-400 font-extrabold" title="Check-in Streak">
-              <Flame size={15} className="fill-orange-400 animate-bounce" />
-              <span className="text-sm">{streak}d</span>
-            </div>
-            <div className="w-px h-3 bg-white/20" />
-            <div className="font-black text-sage tracking-widest text-[11px]" title="MindPower Energy points">
-              {points} MW
-            </div>
-          </div>
-
-          {/* Auth Trigger and switch account support */}
-          {user ? (
-            <div className="flex items-center gap-2 bg-white/5 border border-white/10 p-1 rounded-xl">
-              <img src={user.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=60'} alt={user.displayName} className="w-7 h-7 rounded-lg border border-sage/40" />
-              <div className="hidden xl:flex flex-col text-left mr-1">
-                <span className="text-[10px] font-bold text-white/95 leading-none truncate max-w-[90px]">{user.displayName}</span>
-                <span className="text-[8px] text-white/40 leading-none mt-0.5 truncate max-w-[90px]">{user.email}</span>
-              </div>
-              <button 
-                onClick={async () => {
-                  await logOut();
-                  triggerNotification(lang === 'bn' ? "লগআউট করা হয়েছে। অন্য একাউন্ট সংযোগ করুন।" : "Logged out successfully. You can connect another user.", 'success');
-                }}
-                className="text-[10px] uppercase font-bold tracking-wider text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-2 py-1 rounded-lg cursor-pointer flex items-center gap-1 transition-all border border-red-500/20"
-                title={lang === 'bn' ? "অন্য অ্যাকাউন্ট দিয়ে প্রবেশ" : "Logout & switch account"}
-              >
-                <LogOut size={12} />
-                <span className="hidden xl:inline">{lang === 'bn' ? "বের হন" : "Exit"}</span>
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={async () => {
-                try {
-                  await signInWithGoogle();
-                  triggerNotification(lang === 'bn' ? "গুগল অ্যাকাউন্ট সংযুক্ত হয়েছে" : "Google Account Connected", 'success');
-                } catch (e: any) {
-                  triggerNotification(e.message || "Failed to sign in", 'error');
-                }
-              }}
-              className="bg-white text-black px-4 py-2 rounded-xl text-xs font-black hover:bg-white/90 cursor-pointer transition-all flex items-center gap-1.5 shadow-md scale-102 hover:scale-[1.04]"
-            >
-              <User size={14} strokeWidth={3} />
-              <span className="hidden sm:inline">Connect Google</span>
-            </button>
-          )}
 
           {/* Mobile menu Button toggle */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden liquid-glass text-white p-2.5 rounded-xl cursor-pointer flex items-center justify-center border border-white/15"
+            className="liquid-glass text-white p-2 rounded-xl cursor-pointer flex items-center justify-center border border-white/15"
           >
-            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            {menuOpen ? <X size={18} /> : <Menu size={18} />}
           </button>
         </div>
       </nav>
+
+      {/* Desktop Left Sidebar Navigation */}
+      <aside id="sidebar-desktop" className="hidden md:flex fixed top-0 left-0 h-screen w-64 z-40 bg-[#070710]/95 backdrop-blur-2xl border-r border-white/10 flex-col justify-between p-6 overflow-y-auto">
+        {/* Top Header Section */}
+        <div className="flex flex-col gap-6 w-full">
+          {/* Logo & Companion Description */}
+          <div id="logo-container-desktop" className="flex items-start gap-3">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-sage/30 to-purple-500/30 border border-white/10 flex items-center justify-center shadow-md shrink-0">
+              <Infinity size={24} className="text-sage animate-pulse" strokeWidth={2} />
+            </div>
+            <div className="overflow-hidden">
+              <div className="flex flex-col gap-0.5">
+                <span className="font-extrabold tracking-tight text-white text-lg leading-tight uppercase truncate">MindMirror</span>
+                <span className="text-[9px] font-black tracking-widest text-[#A7C7E7] bg-white/5 uppercase border border-sage/30 px-1.5 py-0.5 rounded-md self-start truncate">PRATYUSHA</span>
+              </div>
+              <p className="text-[9px] text-white/50 tracking-wider mt-1.5 leading-normal font-light">
+                {lang === 'bn' ? 'বায়োফিল্ড ও আধ্যাত্মিক সহচর' : 'Interactive Biofield & Spiritual Companion'}
+              </p>
+            </div>
+          </div>
+
+          <div className="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+          {/* Navigation vertical list with large bold options */}
+          <div id="nav-pill-desktop" className="flex flex-col gap-2 w-full">
+            {[
+              { id: 'dashboard', label: currentT.tabDashboard, icon: <LayoutDashboard size={18} /> },
+              { id: 'mirror', label: currentT.tabMirror, icon: <Camera size={18} /> },
+              { id: 'coach', label: currentT.tabCoach, icon: <Compass size={18} /> },
+              { id: 'journal', label: currentT.tabJournal, icon: <Activity size={18} /> },
+              { id: 'playground', label: currentT.tabPlayground, icon: <Brain size={18} /> }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`flex items-center gap-3.5 w-full px-4 py-3 rounded-xl text-xs xl:text-sm font-extrabold tracking-wider transition-all cursor-pointer border ${
+                  activeTab === tab.id 
+                    ? 'bg-sage text-black font-black shadow-lg shadow-sage/20 scale-[1.02] border-sage' 
+                    : 'text-white/75 hover:text-white hover:bg-white/5 border-transparent'
+                }`}
+              >
+                <span className="shrink-0">{tab.icon}</span>
+                <span className="uppercase truncate">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom Section */}
+        <div className="flex flex-col gap-4 w-full mt-6 pt-4 border-t border-white/5 shrink-0">
+          {/* User Status Badge / Leaderboard items */}
+          <div className="flex flex-col gap-2 bg-white/5 border border-white/10 p-3 rounded-2xl text-xs">
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-white/50 text-[10px] tracking-wider uppercase font-extrabold truncate">
+                {lang === 'bn' ? 'টানা উপস্থিতি' : 'Daily Streak'}
+              </span>
+              <div className="flex items-center gap-1 text-orange-400 font-extrabold shrink-0" title="Check-in Streak">
+                <Flame size={14} className="fill-orange-400 animate-bounce" />
+                <span className="text-sm">{streak}d</span>
+              </div>
+            </div>
+            <div className="w-full h-px bg-white/10 my-0.5" />
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-white/50 text-[10px] tracking-wider uppercase font-extrabold truncate">
+                {lang === 'bn' ? 'মাইন্ড-পাওয়ার' : 'MindPower'}
+              </span>
+              <span className="font-extrabold text-sage tracking-widest text-[11px] shrink-0" title="MindPower Energy points">
+                {points} MW
+              </span>
+            </div>
+          </div>
+
+          {/* Language selector and Auth triggers inside sidebar */}
+          <div className="flex flex-col gap-2">
+            <button 
+              onClick={() => {
+                setLang(l => l === 'en' ? 'bn' : 'en');
+                triggerNotification(lang === 'bn' ? "Language changed to English" : "ভাষা পরিবর্তন: বাংলা", 'success');
+              }}
+              className="w-full py-2.5 rounded-xl border border-white/15 text-xs font-black tracking-widest uppercase bg-white/5 hover:bg-white/10 cursor-pointer flex items-center justify-center gap-1.5 text-sage transition-all shrink-0"
+              title="Switch Language / ভাষা পরিবর্তন"
+            >
+              <span className="text-sm">🌐</span> {lang === 'en' ? 'বাংলা' : 'ENGLISH'}
+            </button>
+
+            {/* Auth section */}
+            {user ? (
+              <div className="flex items-center justify-between bg-white/5 border border-white/10 p-2 rounded-xl overflow-hidden shrink-0">
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <img src={user.photoURL || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=60'} alt={user.displayName} className="w-8 h-8 rounded-lg border border-sage/40 shrink-0" />
+                  <div className="flex flex-col text-left overflow-hidden">
+                    <span className="text-[10px] font-bold text-white/95 leading-none truncate max-w-[90px]">{user.displayName}</span>
+                    <span className="text-[8px] text-white/40 leading-none mt-1 truncate max-w-[90px]">{user.email}</span>
+                  </div>
+                </div>
+                <button 
+                  onClick={async () => {
+                    await logOut();
+                    triggerNotification(lang === 'bn' ? "লগআউট করা হয়েছে। অন্য একাউন্ট সংযোগ করুন।" : "Logged out successfully. You can connect another user.", 'success');
+                  }}
+                  className="p-1.5 text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 rounded-lg cursor-pointer transition-all border border-red-500/20 shrink-0"
+                  title={lang === 'bn' ? "অন্য অ্যাকাউন্ট দিয়ে প্রবেশ" : "Logout & switch account"}
+                >
+                  <LogOut size={13} />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={async () => {
+                  try {
+                    await signInWithGoogle();
+                    triggerNotification(lang === 'bn' ? "গুগল অ্যাকাউন্ট সংযুক্ত হয়েছে" : "Google Account Connected", 'success');
+                  } catch (e: any) {
+                    triggerNotification(e.message || "Failed to sign in", 'error');
+                  }
+                }}
+                className="w-full bg-white text-black py-2.5 rounded-xl text-xs font-black hover:bg-white/90 cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-md hover:scale-[1.01] shrink-0"
+              >
+                <User size={14} strokeWidth={3} />
+                <span>Connect Google</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </aside>
 
       {/* Mobile drop menu */}
       {menuOpen && (
@@ -1348,9 +1405,11 @@ export default function App() {
         </div>
       )}
 
-      {/* Hero Welcome banner on premium liquid glass */}
-      {activeTab === 'dashboard' && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 z-10 relative">
+      {/* Page Content Layout wrapper to offset side navigation on desktop */}
+      <div className="md:pl-64 min-h-screen flex flex-col w-full relative z-10 transition-all duration-300">
+        {/* Hero Welcome banner on premium liquid glass */}
+        {activeTab === 'dashboard' && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 z-10 relative">
           <div className="liquid-glass rounded-[32px] sm:rounded-[48px] p-6 sm:p-10 border border-white/5 flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden">
             <div className="space-y-3 max-w-2xl text-left">
               <div className="inline-flex items-center gap-1 bg-sage/10 border border-sage/20 text-sage px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
@@ -1749,62 +1808,59 @@ export default function App() {
                     <span className="text-[10px] font-black tracking-widest uppercase text-white/50">
                       {lang === 'bn' ? '১. আপনার বর্তমান মেজাজ নির্বাচন করুন:' : '1. Choose Simulated Vibe:'}
                     </span>
-                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                      scanMood === 'good' ? 'bg-amber-500/10 text-amber-300' :
-                      scanMood === 'bad' ? 'bg-rose-500/10 text-rose-300' :
-                      scanMood === 'calm' ? 'bg-cyan-500/10 text-cyan-300' : 'bg-orange-500/10 text-orange-400'
-                    }`}>
-                      {scanMood === 'good' ? (lang === 'bn' ? 'ভালো মেজাজ' : 'Good Mood') :
-                       scanMood === 'bad' ? (lang === 'bn' ? 'খারাপ মেজাজ' : 'Bad Mood') :
-                       scanMood === 'calm' ? (lang === 'bn' ? 'শান্ত মেজাজ' : 'Cool Calm') : (lang === 'bn' ? 'উত্তেজিত মেজাজ' : 'Stressed')}
-                    </span>
+                    {(() => {
+                      const vibeOptions = [
+                        { key: 'good', emoji: '🌟', labelEn: 'Good', labelBn: 'ভালো', color: 'bg-amber-500/10 text-amber-300 border border-amber-500/20' },
+                        { key: 'bad', emoji: '🌧️', labelEn: 'Bad', labelBn: 'খারাপ', color: 'bg-rose-500/10 text-rose-300 border border-rose-500/20' },
+                        { key: 'calm', emoji: '🧘', labelEn: 'Calm', labelBn: 'শান্ত', color: 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/20' },
+                        { key: 'stressed', emoji: '⚡', labelEn: 'Stressed', labelBn: 'উত্তেজিত', color: 'bg-orange-500/10 text-orange-400 border border-orange-500/20' },
+                        { key: 'anxious', emoji: '😰', labelEn: 'Anxious', labelBn: 'উদ্বিগ্ন', color: 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/20' },
+                        { key: 'angry', emoji: '🔥', labelEn: 'Angry', labelBn: 'রাগান্বিত', color: 'bg-red-500/10 text-red-300 border border-red-500/20' },
+                        { key: 'lonely', emoji: '🥀', labelEn: 'Lonely', labelBn: 'একাকী', color: 'bg-violet-500/10 text-violet-300 border border-violet-500/20' },
+                        { key: 'tired', emoji: '🔋', labelEn: 'Tired', labelBn: 'ক্লান্ত', color: 'bg-zinc-500/10 text-zinc-300 border border-zinc-500/20' },
+                        { key: 'excited', emoji: '🎉', labelEn: 'Excited', labelBn: 'রোমাঞ্চিত', color: 'bg-pink-500/10 text-pink-300 border border-pink-500/20' },
+                        { key: 'heartbroken', emoji: '💔', labelEn: 'Heartbroken', labelBn: 'মনভাঙা', color: 'bg-teal-500/10 text-teal-300 border border-teal-500/20' },
+                        { key: 'blessed', emoji: '✨', labelEn: 'Blessed', labelBn: 'কৃতজ্ঞ', color: 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/20' },
+                        { key: 'confused', emoji: '🌀', labelEn: 'Confused', labelBn: 'বিভ্রান্ত', color: 'bg-yellow-500/10 text-yellow-300 border border-yellow-500/20' }
+                      ];
+                      const activeVibe = vibeOptions.find(v => v.key === scanMood) || vibeOptions[0];
+                      return (
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${activeVibe.color}`}>
+                          {lang === 'bn' ? activeVibe.labelBn : activeVibe.labelEn}
+                        </span>
+                      );
+                    })()}
                   </div>
 
-                  <div className="grid grid-cols-4 gap-2">
-                    <button
-                      onClick={() => setScanMood('good')}
-                      className={`py-3 px-1.5 rounded-xl text-[10px] font-bold tracking-wider uppercase transition-all flex flex-col items-center gap-1 ${
-                        scanMood === 'good' 
-                          ? 'bg-amber-500 text-black font-black shadow-lg shadow-amber-500/15 scale-[1.03]' 
-                          : 'bg-white/[0.03] text-white/60 hover:text-white border border-white/5'
-                      }`}
-                    >
-                      <span className="text-sm">🌟</span>
-                      <span>{lang === 'bn' ? 'ভালো' : 'Good'}</span>
-                    </button>
-                    <button
-                      onClick={() => setScanMood('bad')}
-                      className={`py-3 px-1.5 rounded-xl text-[10px] font-bold tracking-wider uppercase transition-all flex flex-col items-center gap-1 ${
-                        scanMood === 'bad' 
-                          ? 'bg-rose-500 text-white font-black shadow-lg shadow-rose-500/15 scale-[1.03]' 
-                          : 'bg-white/[0.03] text-white/60 hover:text-white border border-white/5'
-                      }`}
-                    >
-                      <span className="text-sm">🌧️</span>
-                      <span>{lang === 'bn' ? 'খারাপ' : 'Bad'}</span>
-                    </button>
-                    <button
-                      onClick={() => setScanMood('calm')}
-                      className={`py-3 px-1.5 rounded-xl text-[10px] font-bold tracking-wider uppercase transition-all flex flex-col items-center gap-1 ${
-                        scanMood === 'calm' 
-                          ? 'bg-cyan-500 text-black font-black shadow-lg shadow-cyan-500/15 scale-[1.03]' 
-                          : 'bg-white/[0.03] text-white/60 hover:text-white border border-white/5'
-                      }`}
-                    >
-                      <span className="text-sm">🧘</span>
-                      <span>{lang === 'bn' ? 'শান্ত' : 'Calm'}</span>
-                    </button>
-                    <button
-                      onClick={() => setScanMood('stressed')}
-                      className={`py-3 px-1.5 rounded-xl text-[10px] font-bold tracking-wider uppercase transition-all flex flex-col items-center gap-1 ${
-                        scanMood === 'stressed' 
-                          ? 'bg-orange-500 text-black font-black shadow-lg shadow-orange-500/15 scale-[1.03]' 
-                          : 'bg-white/[0.03] text-white/60 hover:text-white border border-white/5'
-                      }`}
-                    >
-                      <span className="text-sm">⚡</span>
-                      <span>{lang === 'bn' ? 'উত্তেজিত' : 'Stressed'}</span>
-                    </button>
+                  <div className="grid grid-cols-4 gap-2 max-h-[170px] overflow-y-auto pr-1">
+                    {[
+                      { key: 'good', emoji: '🌟', labelEn: 'Good', labelBn: 'ভালো', activeBg: 'bg-amber-500 text-black font-black shadow-amber-500/15' },
+                      { key: 'bad', emoji: '🌧️', labelEn: 'Bad', labelBn: 'খারাপ', activeBg: 'bg-rose-500 text-white font-black shadow-rose-500/15' },
+                      { key: 'calm', emoji: '🧘', labelEn: 'Calm', labelBn: 'শান্ত', activeBg: 'bg-cyan-500 text-black font-black shadow-cyan-500/15' },
+                      { key: 'stressed', emoji: '⚡', labelEn: 'Stressed', labelBn: 'উত্তেজিত', activeBg: 'bg-orange-500 text-black font-black shadow-orange-500/15' },
+                      { key: 'anxious', emoji: '😰', labelEn: 'Anxious', labelBn: 'উদ্বিগ্ন', activeBg: 'bg-indigo-500 text-white font-black shadow-indigo-500/15' },
+                      { key: 'angry', emoji: '🔥', labelEn: 'Angry', labelBn: 'রাগান্বিত', activeBg: 'bg-red-500 text-white font-black shadow-red-500/15' },
+                      { key: 'lonely', emoji: '🥀', labelEn: 'Lonely', labelBn: 'একাকী', activeBg: 'bg-violet-500 text-white font-black shadow-violet-500/15' },
+                      { key: 'tired', emoji: '🔋', labelEn: 'Tired', labelBn: 'ক্লান্ত', activeBg: 'bg-zinc-500 text-white font-black shadow-zinc-500/15' },
+                      { key: 'excited', emoji: '🎉', labelEn: 'Excited', labelBn: 'রোমাঞ্চিত', activeBg: 'bg-pink-500 text-white font-black shadow-pink-500/15' },
+                      { key: 'heartbroken', emoji: '💔', labelEn: 'Heartbroken', labelBn: 'মনভাঙা', activeBg: 'bg-teal-500 text-white font-black shadow-teal-500/15' },
+                      { key: 'blessed', emoji: '✨', labelEn: 'Blessed', labelBn: 'কৃতজ্ঞ', activeBg: 'bg-emerald-500 text-black font-black shadow-emerald-500/15' },
+                      { key: 'confused', emoji: '🌀', labelEn: 'Confused', labelBn: 'বিভ্রান্ত', activeBg: 'bg-yellow-500 text-black font-black shadow-yellow-500/15' }
+                    ].map((v) => (
+                      <button
+                        key={v.key}
+                        type="button"
+                        onClick={() => setScanMood(v.key)}
+                        className={`py-2.5 px-1 rounded-xl text-[9px] font-bold tracking-wider uppercase transition-all duration-300 flex flex-col items-center gap-1 ${
+                          scanMood === v.key 
+                            ? `${v.activeBg} scale-[1.03] shadow-md` 
+                            : 'bg-white/[0.03] text-white/60 hover:text-white border border-white/5 hover:bg-white/[0.06]'
+                        }`}
+                      >
+                        <span className="text-sm">{v.emoji}</span>
+                        <span className="truncate max-w-full text-center">{lang === 'bn' ? v.labelBn : v.labelEn}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -2956,6 +3012,7 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+      </div>
 
       {/* Diagnostic & Mystical Mystery Card Modal Popup (requested by user) */}
       <AnimatePresence>
