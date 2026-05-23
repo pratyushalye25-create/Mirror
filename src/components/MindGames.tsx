@@ -79,7 +79,7 @@ export default function MindGames({ lang, points, setPoints, triggerNotification
   const [gameProgress, setGameProgress] = useState<Record<number, { beginner: boolean; pro: boolean; advance: boolean }>>(() => {
     const saved = localStorage.getItem('mind_games_progress_v3');
     let progress: Record<number, { beginner: boolean; pro: boolean; advance: boolean }> = {
-      1: { beginner: true, pro: true, advance: true }
+      1: { beginner: false, pro: false, advance: false }
     };
     if (saved) {
       try { 
@@ -87,11 +87,7 @@ export default function MindGames({ lang, points, setPoints, triggerNotification
         if (parsed && typeof parsed === 'object') {
           progress = { ...progress, ...parsed };
           if (!progress[1]) {
-            progress[1] = { beginner: true, pro: true, advance: true };
-          } else {
-            progress[1].beginner = true;
-            progress[1].pro = true;
-            progress[1].advance = true;
+            progress[1] = { beginner: false, pro: false, advance: false };
           }
         }
       } catch (e) { /* ignore */ }
@@ -107,19 +103,6 @@ export default function MindGames({ lang, points, setPoints, triggerNotification
 
   // Scroll to bottom helper for map container
   const mapScrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // If Level 1 has not been fully cleared in state, auto-clear it to make sure Level 2 is unlocked
-    if (!gameProgress[1] || !gameProgress[1].beginner || !gameProgress[1].pro || !gameProgress[1].advance) {
-      const updated = {
-        ...gameProgress,
-        1: { beginner: true, pro: true, advance: true },
-        2: gameProgress[2] || { beginner: false, pro: false, advance: false }
-      };
-      setGameProgress(updated);
-      localStorage.setItem('mind_games_progress_v3', JSON.stringify(updated));
-    }
-  }, []);
 
   useEffect(() => {
     // Save progress to local storage
@@ -235,51 +218,6 @@ export default function MindGames({ lang, points, setPoints, triggerNotification
         <div className="flex items-center gap-3">
           <button 
             type="button"
-            onClick={() => {
-              const updated = {
-                ...gameProgress,
-                1: { beginner: true, pro: true, advance: true },
-                2: gameProgress[2] || { beginner: false, pro: false, advance: false }
-              };
-              setGameProgress(updated);
-              localStorage.setItem('mind_games_progress_v3', JSON.stringify(updated));
-              triggerNotification(
-                lang === 'bn' 
-                  ? "মেমোরি গেম লেভেল ১ সম্পূর্ণ আনলক করা হয়েছে!" 
-                  : "Memory game Level 1 (Beginner, Pro, Advance) successfully unlocked!", 
-                "success"
-              );
-            }}
-            className="px-3.5 py-1.5 rounded-xl border border-purple-500/30 text-purple-300 hover:text-purple-200 hover:border-purple-500/60 bg-purple-500/10 hover:bg-purple-500/20 transition-all text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 cursor-pointer"
-          >
-            <Sparkles size={12} className="text-purple-400 animate-pulse" />
-            {lang === 'bn' ? 'লেভেল ১ আনলক' : 'Unlock Level 1'}
-          </button>
-
-          <button 
-            type="button"
-            onClick={() => {
-              const allUnlockedProgress: Record<number, { beginner: boolean; pro: boolean; advance: boolean }> = {};
-              ALL_GAMES.forEach(game => {
-                allUnlockedProgress[game.id] = { beginner: true, pro: true, advance: true };
-              });
-              setGameProgress(allUnlockedProgress);
-              localStorage.setItem('mind_games_progress_v3', JSON.stringify(allUnlockedProgress));
-              triggerNotification(
-                lang === 'bn' 
-                  ? "সব ২২টি লেভেল সফলভাবে আনলক করা হয়েছে!" 
-                  : "All 22 Cosmic Levels successfully unlocked!", 
-                "success"
-              );
-            }}
-            className="px-3.5 py-1.5 rounded-xl border border-cyan-500/30 text-cyan-300 hover:text-cyan-200 hover:border-cyan-500/60 bg-cyan-500/10 hover:bg-cyan-500/20 transition-all text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 cursor-pointer"
-          >
-            <Trophy size={12} className="text-cyan-400 animate-pulse" />
-            {lang === 'bn' ? 'সব লেভেল আনলক' : 'Unlock All Levels'}
-          </button>
-
-          <button 
-            type="button"
             onClick={handleResetProgress}
             className="px-3.5 py-1.5 rounded-xl border border-white/10 text-white/50 hover:text-red-400 hover:border-red-500/20 bg-white/[0.02] hover:bg-red-500/5 transition-all text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-1.5 cursor-pointer"
           >
@@ -381,6 +319,18 @@ export default function MindGames({ lang, points, setPoints, triggerNotification
                         setSelectedGameId(game.id);
                         setIsPlaying(false);
                         setGameSuccess(null);
+                        
+                        // Select the first incomplete difficulty
+                        const pObj = gameProgress[game.id] || { beginner: false, pro: false, advance: false };
+                        if (!pObj.beginner) {
+                          setActivePlayDifficulty('beginner');
+                        } else if (!pObj.pro) {
+                          setActivePlayDifficulty('pro');
+                        } else if (!pObj.advance) {
+                          setActivePlayDifficulty('advance');
+                        } else {
+                          setActivePlayDifficulty('beginner');
+                        }
                       } else {
                         triggerNotification(
                           lang === 'bn' 
@@ -523,32 +473,58 @@ export default function MindGames({ lang, points, setPoints, triggerNotification
                             { key: 'advance' as const, label: lang === 'bn' ? 'অ্যাডভান্স' : 'Advance', points: '+150 MW', class: 'border-purple-500/20 text-purple-300 bg-purple-500/5', colorCode: 'purple' }
                           ].map((tier) => {
                             const completed = prog[tier.key];
+                            const isTierUnlocked = (() => {
+                              if (tier.key === 'beginner') return true;
+                              if (tier.key === 'pro') return prog.beginner;
+                              if (tier.key === 'advance') return prog.pro;
+                              return false;
+                            })();
+
                             return (
                               <button
                                 key={tier.key}
                                 type="button"
-                                onClick={() => setActivePlayDifficulty(tier.key)}
+                                onClick={() => {
+                                  if (isTierUnlocked) {
+                                    setActivePlayDifficulty(tier.key);
+                                  } else {
+                                    triggerNotification(
+                                      lang === 'bn' 
+                                        ? `এই অসুবিধাটি লকড রয়েছে! এটি আনলক করতে আগের ধাপটি সম্পন্ন করুন।`
+                                        : `This difficulty is locked! Perfect the previous tier to unlock this mode.`, 
+                                      'error'
+                                    );
+                                  }
+                                }}
                                 className={`p-4 rounded-xl border flex flex-col items-center justify-between gap-2.5 transition-all text-center cursor-pointer ${
-                                  activePlayDifficulty === tier.key 
-                                    ? 'border-sage bg-sage/10 scale-[1.03] shadow-lg shadow-sage/5' 
-                                    : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.04]'
+                                  !isTierUnlocked 
+                                    ? 'opacity-50 border-white/5 bg-black/40 cursor-not-allowed'
+                                    : activePlayDifficulty === tier.key 
+                                      ? 'border-sage bg-sage/10 scale-[1.03] shadow-lg shadow-sage/5' 
+                                      : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.04]'
                                 }`}
                               >
                                 <div className="flex items-center gap-1.5 min-h-[22px]">
                                   {completed ? (
                                     <CheckCircle size={14} className="text-emerald-400" />
+                                  ) : !isTierUnlocked ? (
+                                    <Lock size={12} className="text-white/35" />
                                   ) : (
-                                    <Star size={14} className="text-white/30" />
+                                    <Star size={14} className="text-amber-400 animate-pulse" />
                                   )}
-                                  <span className={`text-xs font-black uppercase tracking-wider ${activePlayDifficulty === tier.key ? 'text-sage' : 'text-white'}`}>
+                                  <span className={`text-xs font-black uppercase tracking-wider ${activePlayDifficulty === tier.key && isTierUnlocked ? 'text-sage' : 'text-white'}`}>
                                     {tier.label}
                                   </span>
                                 </div>
                                 <span className="text-[10px] bg-white/5 px-2 py-0.5 rounded-full text-white/50 border border-white/5">
                                   {tier.points}
                                 </span>
-                                <span className={`text-[8px] font-black uppercase tracking-widest ${completed ? 'text-emerald-400' : 'text-white/40'}`}>
-                                  {completed ? (lang === 'bn' ? 'সম্পন্ন' : 'CLEARED') : (lang === 'bn' ? 'খেলুন' : 'PLAYABLE')}
+                                <span className={`text-[8px] font-black uppercase tracking-widest ${completed ? 'text-emerald-400' : isTierUnlocked ? 'text-white/40' : 'text-red-400/60'}`}>
+                                  {completed 
+                                    ? (lang === 'bn' ? 'সম্পন্ন' : 'CLEARED') 
+                                    : isTierUnlocked 
+                                      ? (lang === 'bn' ? 'খেলুন' : 'PLAYABLE') 
+                                      : (lang === 'bn' ? 'লকড' : 'LOCKED')}
                                 </span>
                               </button>
                             );
@@ -566,8 +542,8 @@ export default function MindGames({ lang, points, setPoints, triggerNotification
                         </p>
                         <p>
                           {lang === 'bn' 
-                            ? 'আপনি যেকোনো মুড নির্বাচন করে খেলা শুরু করতে পারেন। ৩টি মুডেই ১ বার করে জয়ী হওয়ার পর পরবর্তী লেভেলটি স্বয়ংক্রিয়ভাবে আনলকড হয়ে যাবে!'
-                            : `Selected difficulty parameter tuning: ${activePlayDifficulty === 'beginner' ? 'Basic level challenges suitable for beginners' : activePlayDifficulty === 'pro' ? 'Advanced challenge parameters, smart AI levels' : 'Ultimate hyper competitive parameters and limits'}. Unlock the next trail node once all three are complete!`}
+                            ? 'আপনি বিগিনার মুড সম্পন্ন করে প্রো এবং প্রো সম্পন্ন করে অ্যাডভান্সড মুড আনলক করতে পারবেন। ৩টি মুডেই ১ বার করে জয়ী হওয়ার পর পরবর্তী লেভেলটি স্বয়ংক্রিয়ভাবে আনলকড হয়ে যাবে!'
+                            : `Play through the difficulties in order: Win Beginner to unlock Pro, and win Pro to unlock Advance! Unlock the next cosmic level once all three tiers are successfully cleared!`}
                         </p>
                       </div>
                     </div>
@@ -582,15 +558,6 @@ export default function MindGames({ lang, points, setPoints, triggerNotification
                     >
                       <Play className="fill-black text-black shrink-0" size={14} />
                       <span className="truncate">{lang === 'bn' ? 'খেলা আরম্ভ করুন' : 'Launch Level Arena'}</span>
-                    </button>
-                    
-                    <button
-                      type="button"
-                      onClick={() => handleMarkDifficultyComplete(activePlayDifficulty)}
-                      className="px-4 py-4 rounded-2xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 hover:border-pink-500/50 hover:from-purple-500/30 hover:to-pink-500/30 text-white font-extrabold uppercase tracking-widest text-[9px] min-h-[52px] cursor-pointer flex items-center justify-center gap-2 active:scale-95 transition-all"
-                    >
-                      <Sparkles size={14} className="text-pink-400 animate-pulse" />
-                      <span>{lang === 'bn' ? 'তাত্ক্ষণিক আনলক' : 'Instant Unlock'}</span>
                     </button>
                   </div>
                 </div>

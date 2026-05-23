@@ -306,9 +306,10 @@ interface LoginRequiredViewProps {
   lang: 'en' | 'bn';
   currentT: any;
   onSignIn: () => Promise<any>;
+  triggerNotification: (message: string, type: 'success' | 'error') => void;
 }
 
-function LoginRequiredView({ tab, lang, currentT, onSignIn }: LoginRequiredViewProps) {
+function LoginRequiredView({ tab, lang, currentT, onSignIn, triggerNotification }: LoginRequiredViewProps) {
   const tabName = 
     tab === 'mirror' ? (lang === 'bn' ? 'দ্য ডিপ মিরর (The Deep Mirror)' : 'The Deep Mirror') :
     tab === 'coach' ? (lang === 'bn' ? 'অরা কোচ (Aura Coach)' : 'Aura Coach') :
@@ -349,8 +350,18 @@ function LoginRequiredView({ tab, lang, currentT, onSignIn }: LoginRequiredViewP
         onClick={async () => {
           try {
             await onSignIn();
-          } catch (e) {
+            triggerNotification(lang === 'bn' ? "গুগল অ্যাকাউন্ট সংযুক্ত হয়েছে" : "Google Account Connected", 'success');
+          } catch (e: any) {
             console.error(e);
+            const code = e?.code || '';
+            const msg = e?.message || '';
+            const isCancelled = code === 'auth/cancelled-popup-request' || 
+                                code === 'auth/popup-closed-by-user' ||
+                                msg.toLowerCase().includes('cancelled-popup-request') ||
+                                msg.toLowerCase().includes('popup-closed-by-user');
+            if (!isCancelled) {
+              triggerNotification(e.message || "Failed to sign in", 'error');
+            }
           }
         }}
         className="w-full h-14 bg-white hover:bg-white/90 text-black font-extrabold uppercase tracking-widest text-xs rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-white/5 active:scale-95 transition-all cursor-pointer"
@@ -1738,7 +1749,16 @@ export default function App() {
                     await signInWithGoogle();
                     triggerNotification(lang === 'bn' ? "গুগল অ্যাকাউন্ট সংযুক্ত হয়েছে" : "Google Account Connected", 'success');
                   } catch (e: any) {
-                    triggerNotification(e.message || "Failed to sign in", 'error');
+                    console.error(e);
+                    const code = e?.code || '';
+                    const msg = e?.message || '';
+                    const isCancelled = code === 'auth/cancelled-popup-request' || 
+                                        code === 'auth/popup-closed-by-user' ||
+                                        msg.toLowerCase().includes('cancelled-popup-request') ||
+                                        msg.toLowerCase().includes('popup-closed-by-user');
+                    if (!isCancelled) {
+                      triggerNotification(e.message || "Failed to sign in", 'error');
+                    }
                   }
                 }}
                 className="w-full bg-white text-black py-2.5 rounded-xl text-xs font-black hover:bg-white/90 cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-md hover:scale-[1.01] shrink-0"
@@ -2129,7 +2149,7 @@ export default function App() {
 
           {activeTab === 'mirror' && (
             !user ? (
-              <LoginRequiredView tab="mirror" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} />
+              <LoginRequiredView tab="mirror" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} triggerNotification={triggerNotification} />
             ) : (
               <motion.div 
                 key="mirror-pane"
@@ -2713,7 +2733,7 @@ export default function App() {
 
           {activeTab === 'coach' && (
             !user ? (
-              <LoginRequiredView tab="coach" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} />
+              <LoginRequiredView tab="coach" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} triggerNotification={triggerNotification} />
             ) : (
               <motion.div 
                 key="coach-pane"
@@ -2815,7 +2835,7 @@ export default function App() {
 
           {activeTab === 'journal' && (
             !user ? (
-              <LoginRequiredView tab="journal" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} />
+              <LoginRequiredView tab="journal" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} triggerNotification={triggerNotification} />
             ) : (
               <motion.div 
                 key="journal-pane"
@@ -2917,7 +2937,7 @@ export default function App() {
 
           {activeTab === 'playground' && (
             !user ? (
-              <LoginRequiredView tab="playground" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} />
+              <LoginRequiredView tab="playground" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} triggerNotification={triggerNotification} />
             ) : (
               <motion.div 
                 key="playground-pane"
