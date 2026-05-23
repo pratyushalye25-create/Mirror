@@ -78,13 +78,25 @@ export default function MindGames({ lang, points, setPoints, triggerNotification
   // --- STATE FOR MOUNTING OR PROGRESS ---
   const [gameProgress, setGameProgress] = useState<Record<number, { beginner: boolean; pro: boolean; advance: boolean }>>(() => {
     const saved = localStorage.getItem('mind_games_progress_v3');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { /* ignore */ }
-    }
-    // Default initial progress: level 1 is ready, others empty
-    return {
-      1: { beginner: false, pro: false, advance: false }
+    let progress: Record<number, { beginner: boolean; pro: boolean; advance: boolean }> = {
+      1: { beginner: true, pro: true, advance: true }
     };
+    if (saved) {
+      try { 
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          progress = { ...progress, ...parsed };
+          if (!progress[1]) {
+            progress[1] = { beginner: true, pro: true, advance: true };
+          } else {
+            progress[1].beginner = true;
+            progress[1].pro = true;
+            progress[1].advance = true;
+          }
+        }
+      } catch (e) { /* ignore */ }
+    }
+    return progress;
   });
 
   const [selectedGameId, setSelectedGameId] = useState<number | null>(null);
@@ -95,6 +107,19 @@ export default function MindGames({ lang, points, setPoints, triggerNotification
 
   // Scroll to bottom helper for map container
   const mapScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // If Level 1 has not been fully cleared in state, auto-clear it to make sure Level 2 is unlocked
+    if (!gameProgress[1] || !gameProgress[1].beginner || !gameProgress[1].pro || !gameProgress[1].advance) {
+      const updated = {
+        ...gameProgress,
+        1: { beginner: true, pro: true, advance: true },
+        2: gameProgress[2] || { beginner: false, pro: false, advance: false }
+      };
+      setGameProgress(updated);
+      localStorage.setItem('mind_games_progress_v3', JSON.stringify(updated));
+    }
+  }, []);
 
   useEffect(() => {
     // Save progress to local storage
@@ -210,11 +235,56 @@ export default function MindGames({ lang, points, setPoints, triggerNotification
         <div className="flex items-center gap-3">
           <button 
             type="button"
+            onClick={() => {
+              const updated = {
+                ...gameProgress,
+                1: { beginner: true, pro: true, advance: true },
+                2: gameProgress[2] || { beginner: false, pro: false, advance: false }
+              };
+              setGameProgress(updated);
+              localStorage.setItem('mind_games_progress_v3', JSON.stringify(updated));
+              triggerNotification(
+                lang === 'bn' 
+                  ? "মেমোরি গেম লেভেল ১ সম্পূর্ণ আনলক করা হয়েছে!" 
+                  : "Memory game Level 1 (Beginner, Pro, Advance) successfully unlocked!", 
+                "success"
+              );
+            }}
+            className="px-3.5 py-1.5 rounded-xl border border-purple-500/30 text-purple-300 hover:text-purple-200 hover:border-purple-500/60 bg-purple-500/10 hover:bg-purple-500/20 transition-all text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 cursor-pointer"
+          >
+            <Sparkles size={12} className="text-purple-400 animate-pulse" />
+            {lang === 'bn' ? 'লেভেল ১ আনলক' : 'Unlock Level 1'}
+          </button>
+
+          <button 
+            type="button"
+            onClick={() => {
+              const allUnlockedProgress: Record<number, { beginner: boolean; pro: boolean; advance: boolean }> = {};
+              ALL_GAMES.forEach(game => {
+                allUnlockedProgress[game.id] = { beginner: true, pro: true, advance: true };
+              });
+              setGameProgress(allUnlockedProgress);
+              localStorage.setItem('mind_games_progress_v3', JSON.stringify(allUnlockedProgress));
+              triggerNotification(
+                lang === 'bn' 
+                  ? "সব ২২টি লেভেল সফলভাবে আনলক করা হয়েছে!" 
+                  : "All 22 Cosmic Levels successfully unlocked!", 
+                "success"
+              );
+            }}
+            className="px-3.5 py-1.5 rounded-xl border border-cyan-500/30 text-cyan-300 hover:text-cyan-200 hover:border-cyan-500/60 bg-cyan-500/10 hover:bg-cyan-500/20 transition-all text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 cursor-pointer"
+          >
+            <Trophy size={12} className="text-cyan-400 animate-pulse" />
+            {lang === 'bn' ? 'সব লেভেল আনলক' : 'Unlock All Levels'}
+          </button>
+
+          <button 
+            type="button"
             onClick={handleResetProgress}
-            className="px-3.5 py-1.5 rounded-xl border border-white/10 text-white/60 hover:text-red-400 hover:border-red-500/20 bg-white/[0.02] hover:bg-red-500/5 transition-all text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-1.5 rounded-xl border border-white/10 text-white/50 hover:text-red-400 hover:border-red-500/20 bg-white/[0.02] hover:bg-red-500/5 transition-all text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-1.5 cursor-pointer"
           >
             <RefreshCw size={12} />
-            {lang === 'bn' ? 'অগ্রগতি রিসেট করুন' : 'Reset Path'}
+            {lang === 'bn' ? 'রিসেট করুন' : 'Reset Path'}
           </button>
           
           <div className="bg-sage px-4 py-2 rounded-2xl flex items-center gap-2 border border-sage/40 text-black shadow-lg shadow-sage/10 shrink-0">
@@ -478,7 +548,7 @@ export default function MindGames({ lang, points, setPoints, triggerNotification
                                   {tier.points}
                                 </span>
                                 <span className={`text-[8px] font-black uppercase tracking-widest ${completed ? 'text-emerald-400' : 'text-white/40'}`}>
-                                  {completed ? (lang === 'bn' ? 'সম্পন্ন' : 'CLEARED') : (lang === 'bn' ? 'বাকি আছে' : 'LOCKED')}
+                                  {completed ? (lang === 'bn' ? 'সম্পন্ন' : 'CLEARED') : (lang === 'bn' ? 'খেলুন' : 'PLAYABLE')}
                                 </span>
                               </button>
                             );
@@ -504,14 +574,23 @@ export default function MindGames({ lang, points, setPoints, triggerNotification
                   </div>
 
                   {/* Play Action */}
-                  <div className="mt-6 flex flex-col gap-2">
+                  <div className="mt-6 flex flex-col sm:flex-row gap-2">
                     <button 
                       type="button"
                       onClick={handleStartGamePlay}
-                      className="w-full py-4 rounded-2xl bg-sage border border-sage hover:bg-sage/90 text-black font-black uppercase tracking-widest text-xs shadow-lg shadow-sage/15 hover:shadow-sage/20 transition-all max-h-[52px] cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+                      className="flex-1 min-h-[52px] py-3.5 px-6 rounded-2xl bg-sage hover:bg-sage/90 text-black font-black uppercase tracking-widest text-[11px] shadow-lg shadow-sage/20 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95"
                     >
-                      <Play className="fill-black text-black" size={14} />
-                      {lang === 'bn' ? 'খেলা আরম্ভ করুন' : 'Launch Level Arena'}
+                      <Play className="fill-black text-black shrink-0" size={14} />
+                      <span className="truncate">{lang === 'bn' ? 'খেলা আরম্ভ করুন' : 'Launch Level Arena'}</span>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => handleMarkDifficultyComplete(activePlayDifficulty)}
+                      className="px-4 py-4 rounded-2xl bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 hover:border-pink-500/50 hover:from-purple-500/30 hover:to-pink-500/30 text-white font-extrabold uppercase tracking-widest text-[9px] min-h-[52px] cursor-pointer flex items-center justify-center gap-2 active:scale-95 transition-all"
+                    >
+                      <Sparkles size={14} className="text-pink-400 animate-pulse" />
+                      <span>{lang === 'bn' ? 'তাত্ক্ষণিক আনলক' : 'Instant Unlock'}</span>
                     </button>
                   </div>
                 </div>
