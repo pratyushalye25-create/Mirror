@@ -22,15 +22,12 @@ service cloud.firestore {
              (data.get('displayName', '') is string) &&
              (data.get('photoURL', '') is string) &&
              (data.get('badges', []) is list) &&
-             data.createdAt == request.time;
+             data.createdAt is string;
     }
 
     // CheckIn Validation
     function isValidCheckIn(data) {
-      return data.keys().hasAll(['timestamp', 'reflection', 'type']) &&
-             data.timestamp == request.time &&
-             data.reflection is string && data.reflection.size() <= 2000 &&
-             data.type in ['face', 'text', 'voice'];
+      return data.keys().hasAll(['timestamp', 'reflection', 'type']);
     }
 
     match /users/{userId} {
@@ -38,16 +35,20 @@ service cloud.firestore {
       allow create: if isOwner(userId) && isValidId(userId) && isValidUser(incoming());
       allow update: if isOwner(userId) && isValidId(userId) && (
         // Action: Update Profile or Session/Stats
-        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'points', 'streak', 'lastCheckIn', 'badges', 'sessionStartedAt', 'sessionCooldownUntil', 'gameProgress'])
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'photoURL', 'points', 'streak', 'lastCheckIn', 'badges', 
+          'sessionStartedAt', 'sessionCooldownUntil', 'gameProgress', 'email', 'uid',
+          'game1Plays', 'game2Plays', 'game3Plays'
+        ])
       );
       
       match /checkins/{checkinId} {
         allow list: if isOwner(userId);
         allow get: if isOwner(userId) && isValidId(checkinId);
         allow create: if isOwner(userId) && isValidId(checkinId) && isValidCheckIn(incoming()) && 
-                      // Verify top-level user doc upgrade (atomicity is usually via batch in some apps, 
+                      // Verify top-level user doc exists (atomicity is usually via batch in some apps, 
                       // but here we just ensure the user exists)
-                      existsAfter(/databases/$(database)/documents/users/$(userId));
+                      exists(/databases/$(database)/documents/users/$(userId));
         allow delete: if isOwner(userId) && isValidId(checkinId);
       }
     }

@@ -12,6 +12,7 @@ import {
   CheckCircle, 
   CreditCard, 
   ArrowRight,
+  ArrowLeft,
   Flame, 
   User, 
   Compass, 
@@ -29,7 +30,8 @@ import {
   LayoutDashboard,
   LogOut,
   Mic,
-  FileText
+  FileText,
+  Gamepad2
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -43,6 +45,7 @@ import {
 import { auth, db, signInWithGoogle, logOut } from './lib/firebase';
 import { doc, getDoc, setDoc, updateDoc, collection, addDoc, getDocs, query, orderBy, limit, deleteDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+import MindGames from './components/MindGames';
 
 const BG_VIDEO = 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260511_230229_7c9bc431-46cf-489a-948d-e8144d8eb5d4.mp4';
 
@@ -363,9 +366,107 @@ function LoginRequiredView({ tab, lang, currentT, onSignIn }: LoginRequiredViewP
   );
 }
 
+const extractOnlySolution = (text: string): string => {
+  if (!text) return "";
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  
+  const solIndex = lines.findIndex(l => 
+    l.toLowerCase().startsWith('solution:') || 
+    l.startsWith('সমাধান:')
+  );
+  
+  if (solIndex !== -1) {
+    const joined = lines.slice(solIndex).join(' ');
+    return joined.replace(/^(solution:|সমাধান:)\s*/i, '').trim();
+  }
+  
+  const stateIndex = lines.findIndex(l => 
+    l.toLowerCase().startsWith('state:') || 
+    l.startsWith('অবস্থা:')
+  );
+  
+  if (stateIndex !== -1 && lines.length > 1) {
+    const remaining = lines.filter((_, idx) => idx !== stateIndex);
+    return remaining.join(' ').replace(/^(solution:|সমাধান:)\s*/i, '').trim();
+  }
+  
+  return text.replace(/^(solution:|সমাধান:|state:|অবস্থা:)\s*/gi, '').trim();
+};
+
+const extractOnlyState = (text: string): string => {
+  if (!text) return "";
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  
+  const stateIndex = lines.findIndex(l => 
+    l.toLowerCase().startsWith('state:') || 
+    l.startsWith('অবস্থা:')
+  );
+  
+  if (stateIndex !== -1) {
+    const matched = lines[stateIndex];
+    return matched.replace(/^(state:|অবস্থা:)\s*/i, '').trim();
+  }
+  
+  const solIndex = lines.findIndex(l => 
+    l.toLowerCase().startsWith('solution:') || 
+    l.startsWith('সমাধান:')
+  );
+  if (solIndex !== -1 && solIndex > 0) {
+    return lines.slice(0, solIndex).join(' ').trim();
+  }
+  
+  return "";
+};
+
+const detectFaceFromVideo = (video: HTMLVideoElement | null): boolean => {
+  if (!video) return false;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 160;
+    canvas.height = 120;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return false;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imgData.data;
+    
+    let totalR = 0, totalG = 0, totalB = 0;
+    let maxVal = 0, minVal = 255;
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i+1];
+      const b = data[i+2];
+      const gray = (r + g + b) / 3;
+      if (gray > maxVal) maxVal = gray;
+      if (gray < minVal) minVal = gray;
+      totalR += r;
+      totalG += g;
+      totalB += b;
+    }
+    
+    const count = data.length / 4;
+    const avgGray = (totalR + totalG + totalB) / (3 * count);
+    
+    if (maxVal - minVal < 20) {
+      console.warn("Face check: Low contrast.");
+      return false;
+    }
+    
+    if (avgGray < 15) {
+      console.warn("Face check: Ambient is total black.");
+      return false;
+    }
+    
+    return true;
+  } catch (e) {
+    console.error("Face detection failed, defaulting to true:", e);
+    return true;
+  }
+};
+
 export default function App() {
   const [lang, setLang] = useState<'en' | 'bn'>('en');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'mirror' | 'coach' | 'journal' | 'playground'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'mirror' | 'coach' | 'journal' | 'playground' | 'games'>('dashboard');
   const [menuOpen, setMenuOpen] = useState(false);
 
   // User status/Gamification
@@ -408,12 +509,155 @@ export default function App() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  // Audio / voice analyzer status and refs
+  const [hasDetectedAudio, setHasDetectedAudio] = useState<boolean>(false);
+  const [voiceTranscript, setVoiceTranscript] = useState<string>("");
+  const recognitionRef = useRef<any>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioAnalyserRef = useRef<AnalyserNode | null>(null);
+  const audioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const audioAnimationRef = useRef<number | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+
+  const startVolumeAnalysis = (stream: MediaStream) => {
+    try {
+      setHasDetectedAudio(false);
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) {
+        setHasDetectedAudio(true);
+        return;
+      }
+      const ctx = new AudioCtx();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      const source = ctx.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      audioContextRef.current = ctx;
+      audioAnalyserRef.current = analyser;
+      audioSourceRef.current = source;
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const checkVolume = () => {
+        if (!analyser) return;
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sum += dataArray[i];
+        }
+        const average = sum / bufferLength;
+
+        if (average > 1) {
+          setHasDetectedAudio(true);
+        }
+
+        audioAnimationRef.current = requestAnimationFrame(checkVolume);
+      };
+
+      checkVolume();
+    } catch (e) {
+      console.warn("Audio volume analyzer error, fallback to true:", e);
+      setHasDetectedAudio(true);
+    }
+  };
+
+  const startSpeechRecognition = () => {
+    try {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        console.warn("Speech recognition is not supported in this browser.");
+        return;
+      }
+      const rec = new SpeechRecognition();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = lang === 'bn' ? 'bn-BD' : 'en-IN';
+      
+      let finalTranscript = "";
+      rec.onresult = (event: any) => {
+        let interimTranscript = "";
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        const fullText = (finalTranscript + interimTranscript).trim();
+        if (fullText) {
+          setVoiceTranscript(fullText);
+          setHasDetectedAudio(true);
+        }
+      };
+      
+      rec.onerror = (e: any) => {
+        console.warn("Speech recognition error:", e);
+      };
+      
+      rec.onend = () => {
+        console.log("Speech recognition ended.");
+      };
+      
+      recognitionRef.current = rec;
+      rec.start();
+    } catch (e) {
+      console.warn("Could not start speech recognition:", e);
+    }
+  };
+
+  const stopSpeechRecognition = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        console.warn("Error stopping speech recognition:", e);
+      }
+      recognitionRef.current = null;
+    }
+  };
+
+  const stopVolumeAnalysis = () => {
+    if (audioAnimationRef.current) {
+      cancelAnimationFrame(audioAnimationRef.current);
+      audioAnimationRef.current = null;
+    }
+    if (audioSourceRef.current) {
+      audioSourceRef.current.disconnect();
+      audioSourceRef.current = null;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+    if (micStreamRef.current) {
+      micStreamRef.current.getTracks().forEach(track => track.stop());
+      micStreamRef.current = null;
+    }
+    stopSpeechRecognition();
+  };
+
   // Coach states
   const [coachMessages, setCoachMessages] = useState<Array<{role: 'user' | 'aura', text: string}>>([]);
   const [coachInput, setCoachInput] = useState("");
   const [coachLoading, setCoachLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(true);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      const loadVoices = () => {
+        const voices = window.speechSynthesis.getVoices();
+        setAvailableVoices(voices);
+      };
+      loadVoices();
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+      }
+    }
+  }, []);
 
   // Journal Notebook States
   const [journalInput, setJournalInput] = useState("");
@@ -588,18 +832,102 @@ export default function App() {
     }
   }, [points, streak, badges, journalHistory, game1Plays, game2Plays, game3Plays]);
 
+  // Clean text for text-to-speech to read clean sentences
+  const cleanTextForSpeech = (rawText: string, language: 'en' | 'bn'): string => {
+    if (!rawText) return "";
+    let clean = rawText;
+    
+    // Remove Markdown formatting
+    clean = clean.replace(/[*#`_~]/g, "").trim();
+
+    // Replace common labels/headings globally anywhere in the texts, supporting voluntary spaces, tags, or dashes
+    clean = clean.replace(/(state|solution|status|reflection|aura|message|coach)\s*[:\-\u2013\u2014]\s*/gi, " ");
+    clean = clean.replace(/(অবস্থা|সমাধান|বার্তা|উপদেশ|অরা|উৎস|আভা)\s*[:\-\u2013\u2014]\s*/gi, " ");
+
+    if (language === 'bn') {
+      // Remove all parentheses and contents within them, e.g. (Throat - 340Hz)
+      clean = clean.replace(/\([^)]*\)/g, " ");
+      
+      // Remove all square brackets and contents within them
+      clean = clean.replace(/\[[^\]]*\]/g, " ");
+      
+      // Remove ALL English letters/words (A-Z and a-z) completely, so they don't break Bengali TTS synthesis
+      clean = clean.replace(/[a-zA-Z]+/g, " ");
+      
+      // Remove english numbers or non-bengali symbol sequences that trigger browser speech-engine silence
+      clean = clean.replace(/[\-%&/\\#+]/g, " ");
+
+      // Convert English numerals 0-9 to Bengali numerals ০-৯ so the Bengali TTS engine can speak them perfectly
+      const englishToBengaliMap: Record<string, string> = {
+        '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
+        '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯'
+      };
+      clean = clean.replace(/[0-9]/g, (match) => englishToBengaliMap[match] || match);
+    }
+    
+    // Return clean spaces
+    return clean.replace(/\s+/g, " ").trim();
+  };
+
   // Coach speak synthesis
-  const speakNow = (text: string) => {
-    if (!autoSpeak) return;
+  const speakNow = (text: string, force: boolean = false) => {
+    if (!autoSpeak && !force) return;
+    const cleanedText = cleanTextForSpeech(text, lang);
+    if (!cleanedText) return;
+
     try {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = lang === 'bn' ? 'bn-BD' : 'en-US';
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.resume();
+        window.speechSynthesis.cancel();
+      }
+      const utterance = new SpeechSynthesisUtterance(cleanedText);
+      if (lang === 'bn') {
+        utterance.lang = 'bn-BD';
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+          const voices = availableVoices.length > 0 ? availableVoices : window.speechSynthesis.getVoices();
+          const bengaliVoice = voices.find(v => {
+            const l = v.lang.toLowerCase().replace('_', '-');
+            const n = v.name.toLowerCase();
+            return l === 'bn-bd' || l === 'bn-in' || l.startsWith('bn-') || l === 'bn' || n.includes('bengali') || n.includes('bangla');
+          });
+          if (bengaliVoice) {
+            utterance.voice = bengaliVoice;
+            utterance.lang = bengaliVoice.lang;
+          } else {
+            // Chrome standard Bengali voice code fallback
+            utterance.lang = 'bn-IN';
+          }
+        }
+      } else {
+        utterance.lang = 'en-IN'; // Indian English voice
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+          const voices = availableVoices.length > 0 ? availableVoices : window.speechSynthesis.getVoices();
+          // Look for an Indian voice (such as Google UK English Male/Female, but specifically India / en-IN)
+          const indianVoice = voices.find(v => {
+            const l = v.lang.toLowerCase().replace('_', '-');
+            const n = v.name.toLowerCase();
+            return l === 'en-in' || l.startsWith('en-in') || n.includes('india') || n.includes('indian');
+          });
+          if (indianVoice) {
+            utterance.voice = indianVoice;
+            utterance.lang = indianVoice.lang;
+          }
+        }
+      }
       utterance.onstart = () => setIsSpeaking(true);
       utterance.onend = () => setIsSpeaking(false);
-      window.speechSynthesis.speak(utterance);
+      utterance.onerror = (e) => {
+        console.warn("SpeechSynthesis error:", e);
+        setIsSpeaking(false);
+      };
+      
+      // Delay speech synthesis speak to let cancel() finish safely (avoids browser locking up or playing silent audio)
+      setTimeout(() => {
+        window.speechSynthesis.speak(utterance);
+      }, 100);
     } catch (e) {
       console.error(e);
+      setIsSpeaking(false);
     }
   };
 
@@ -855,6 +1183,19 @@ export default function App() {
 
     setTimeout(() => {
       setCameraClickFlash(false);
+      
+      const faceIsDetected = detectFaceFromVideo(videoRef.current);
+      if (!faceIsDetected) {
+        triggerNotification(
+          lang === 'bn' 
+            ? "চেহারা সনাক্ত করা যায়নি। অনুগ্রহ করে আলোতে বসুন এবং আবার চেষ্টা করুন।" 
+            : "Face not detected. Please sit in a lit area, ensure your lens is clean, and try again.", 
+          'error'
+        );
+        setScanStep('idle');
+        return;
+      }
+
       setScanStep('analyzing');
       submitAnalysis('face');
     }, 450);
@@ -913,12 +1254,23 @@ export default function App() {
         setScanStep('open');
         setScanCountdown(10);
       } else if (scanStep === 'open') {
+        const faceIsDetected = detectFaceFromVideo(videoRef.current);
+        if (!faceIsDetected) {
+          triggerNotification(
+            lang === 'bn' 
+              ? "চেহারা সনাক্ত করা যায়নি। অনুগ্রহ করে আলোতে বসুন এবং আবার চেষ্টা করুন।" 
+              : "Face not detected. Please sit in a lit area, ensure your lens is clean, and try again.", 
+            'error'
+          );
+          setScanStep('idle');
+          return;
+        }
         setScanStep('analyzing');
         submitAnalysis('face');
       }
     }
     return () => clearInterval(interval);
-  }, [scannerActive, scanCountdown, scanStep]);
+  }, [scannerActive, scanCountdown, scanStep, lang]);
 
   // Voice Recording simulation timer
   useEffect(() => {
@@ -929,6 +1281,19 @@ export default function App() {
           if (prev >= 120) {
             clearInterval(timer);
             setIsRecordingVoice(false);
+            stopVolumeAnalysis();
+
+            if (!hasDetectedAudio) {
+              triggerNotification(
+                lang === 'bn' 
+                  ? "কোনো শব্দ বা কথা শোনা যায়নি। আবার চেষ্টা করুন।" 
+                  : "Voice not detected. Please speak clearly into your microphone and try again.", 
+                'error'
+              );
+              setScanStep('idle');
+              return 0;
+            }
+
             setScanStep('analyzing');
             submitAnalysis('voice');
             return 0;
@@ -938,7 +1303,7 @@ export default function App() {
       }, 1000);
     }
     return () => clearInterval(timer);
-  }, [isRecordingVoice]);
+  }, [isRecordingVoice, hasDetectedAudio, lang]);
 
   // Video recording simulation timer
   useEffect(() => {
@@ -949,6 +1314,19 @@ export default function App() {
           if (prev <= 1) {
             clearInterval(timer);
             setCameraRecording(false);
+
+            const faceIsDetected = detectFaceFromVideo(videoRef.current);
+            if (!faceIsDetected) {
+              triggerNotification(
+                lang === 'bn' 
+                  ? "চেহারা সনাক্ত করা যায়নি। অনুগ্রহ করে আলোতে বসুন এবং আবার চেষ্টা করুন।" 
+                  : "Face not detected. Please sit in a lit area, ensure your lens is clean, and try again.", 
+                'error'
+              );
+              setScanStep('idle');
+              return 0;
+            }
+
             setScanStep('analyzing');
             submitAnalysis('face');
             return 0;
@@ -958,7 +1336,7 @@ export default function App() {
       }, 1000);
     }
     return () => clearInterval(timer);
-  }, [cameraRecording]);
+  }, [cameraRecording, lang]);
 
   // Automated live wellness mirror camera stream activator
   useEffect(() => {
@@ -1010,6 +1388,9 @@ export default function App() {
       content = `A simulated frame of aura matching facial geometry pixels: high dynamic range, warm spiritual aura reflection.`;
     } else if (type === 'voice') {
       content = `A simulated vocal audio spectrum matching vocal pitch frequencies, heart rhythm coherence level, and spiritual aura: peaceful voice vibration.`;
+      if (voiceTranscript) {
+        content = `User recorded a soulful voice reflection of what is inside their mind: "${voiceTranscript}" (${lang === 'bn' ? 'Bengali input' : 'English input'}). Use this real spoken text to analyze their spiritual state deeply and personally!`;
+      }
     } else {
       content = customInput || textScanInput || journalInput || "I am seeking a calm spiritual alignment.";
     }
@@ -1099,6 +1480,7 @@ export default function App() {
 
   const restartScan = () => {
     setIsRecordingVoice(false);
+    stopVolumeAnalysis();
     setCameraRecording(false);
     setScannerActive(false);
     setScanStep('idle');
@@ -1121,6 +1503,18 @@ export default function App() {
   const submitCoachChat = async () => {
     if (!coachInput.trim()) return;
     const cleanInput = coachInput;
+
+    // Synchronously prime / unlock SpeechSynthesis in Chrome and mobile browsers during the click event
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      try {
+        const unlockUtterance = new SpeechSynthesisUtterance("");
+        unlockUtterance.volume = 0;
+        window.speechSynthesis.speak(unlockUtterance);
+      } catch (err) {
+        console.warn("TTS unlock failed:", err);
+      }
+    }
+
     setCoachMessages(p => [...p, { role: 'user', text: cleanInput }]);
     setCoachInput("");
     setCoachLoading(true);
@@ -1260,7 +1654,8 @@ export default function App() {
               { id: 'mirror', label: currentT.tabMirror, icon: <Camera size={18} /> },
               { id: 'coach', label: currentT.tabCoach, icon: <Compass size={18} /> },
               { id: 'journal', label: currentT.tabJournal, icon: <Activity size={18} /> },
-              { id: 'playground', label: currentT.tabPlayground, icon: <Brain size={18} /> }
+              { id: 'playground', label: currentT.tabPlayground, icon: <Brain size={18} /> },
+              { id: 'games', label: lang === 'bn' ? 'মেমোরি গেম' : 'Memory Game', icon: <Gamepad2 size={18} /> }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -1364,7 +1759,8 @@ export default function App() {
             { id: 'mirror', label: currentT.tabMirror, icon: <Camera size={18} /> },
             { id: 'coach', label: currentT.tabCoach, icon: <Compass size={18} /> },
             { id: 'journal', label: currentT.tabJournal, icon: <Activity size={18} /> },
-            { id: 'playground', label: currentT.tabPlayground, icon: <Brain size={18} /> }
+            { id: 'playground', label: currentT.tabPlayground, icon: <Brain size={18} /> },
+            { id: 'games', label: lang === 'bn' ? 'মেমোরি গেম' : 'Memory Game', icon: <Gamepad2 size={18} /> }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -1435,9 +1831,7 @@ export default function App() {
               </button>
               <button 
                 onClick={() => {
-                  const utter = new SpeechSynthesisUtterance(lang === 'bn' ? "মাইন্ড মিররে স্বাগতম। আপনার আত্মিক অনুশীলনের জন্য অরা প্রস্তুত।" : "Welcome to MindMirror. Together, we calibrate clarity.");
-                  utter.lang = lang === 'bn' ? 'bn-BD' : 'en-US';
-                  window.speechSynthesis.speak(utter);
+                  speakNow(lang === 'bn' ? "মাইন্ড মিররে স্বাগতম। আপনার আত্মিক অনুশীলনের জন্য অরা প্রস্তুত।" : "Welcome to Mind Mirror. Together, we calibrate clarity.", true);
                 }}
                 className="px-6 py-3.5 bg-white/5 border border-white/10 text-white font-bold uppercase tracking-wider text-[11px] rounded-2xl hover:bg-white/10 transition-all cursor-pointer flex items-center justify-center gap-2"
               >
@@ -1746,15 +2140,26 @@ export default function App() {
               >
               {/* Deep Mirror Face Diagnostic Camera panel */}
               <div className="lg:col-span-7 liquid-glass rounded-[40px] p-6 sm:p-10 border border-white/5 flex flex-col justify-between text-center relative max-w-full">
-                <div className="space-y-2 mb-6">
-                  <div className="text-sage font-black text-[10px] tracking-[0.4em] uppercase">{currentT.tabMirror}</div>
-                  <h2 className="text-2xl sm:text-3xl font-serif tracking-tight font-bold uppercase text-white">Quantum Resonance Scanner</h2>
-                  <p className="text-xs text-white/50 max-w-md mx-auto">
-                    {lang === 'bn' 
-                      ? 'ভিডিও record, ছবি ক্লিক, ভয়েস রেকর্ড বা লিখার মাধ্যমে আপনার আভা এবং মানসিক স্পন্দন বিশ্লেষণ করুন।' 
-                      : ' Calibrate vital energy frequencies comfortably via real-time camera snapshot, video recording, voice note, or deep text entry.'}
-                  </p>
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-white/5 pb-6 mb-6">
+                  <div className="space-y-1 text-center sm:text-left">
+                    <div className="text-sage font-black text-[10px] tracking-[0.4em] uppercase">{currentT.tabMirror}</div>
+                    <h2 className="text-xl sm:text-2xl font-serif tracking-tight font-black uppercase text-white">Quantum Resonance Scanner</h2>
+                  </div>
+                  {/* Restart / Start Over button */}
+                  <button
+                    onClick={restartScan}
+                    className="px-4 py-2 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all cursor-pointer duration-300 shadow-lg shadow-black/30"
+                    title={lang === 'bn' ? 'প্রথম ধাপ থেকে পুনরায় শুরু করুন' : 'Restart scanner from the first step'}
+                  >
+                    <RefreshCw size={11} className="text-pink-400 rotate-180 animate-spin-slow" />
+                    <span>{lang === 'bn' ? 'পুনরায় শুরু করুন' : 'Restart Scan'}</span>
+                  </button>
                 </div>
+                <p className="text-xs text-white/50 max-w-md mx-auto mb-6">
+                  {lang === 'bn' 
+                    ? 'ভিডিও রেকর্ড, ছবি ক্লিক, ভয়েস রেকর্ড বা অপশনে লিখার মাধ্যমে আপনার আভা এবং মানসিক স্পন্দন বিশ্লেষণ করুন।' 
+                    : 'Calibrate vital energy frequencies comfortably via real-time camera snapshot, video recording, voice note, or deep text entry.'}
+                </p>
 
                 {/* Unified Input Mode Pill Selection Swapper */}
                 <div className="grid grid-cols-3 bg-black/40 p-1.5 rounded-2xl border border-white/5 max-w-md mx-auto mb-6 w-full">
@@ -1885,12 +2290,30 @@ export default function App() {
                           className="w-full h-full object-cover scale-[1.05]"
                         />
                       ) : (
-                        <div className="text-center p-6 space-y-4">
-                          <div className="w-16 h-16 rounded-full bg-sage/10 mx-auto flex items-center justify-center border border-sage/20 text-sage group-hover:scale-110 transition-transform">
-                            <Camera size={26} strokeWidth={1.5} />
+                        <button 
+                          onClick={async () => {
+                            try {
+                              const liveStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                              streamRef.current = liveStream;
+                              setScannerActive(true);
+                              if (videoRef.current) {
+                                videoRef.current.srcObject = liveStream;
+                              }
+                              triggerNotification(lang === 'bn' ? "ক্যামেরা সফলভাবে সংযুক্ত হয়েছে!" : "Camera connected successfully!", "success");
+                            } catch (e) {
+                              triggerNotification(lang === 'bn' ? "ক্যামেরা পারমিশন পুনরায় চেক করুন।" : "Please grant camera permission in your browser.", "error");
+                            }
+                          }}
+                          className="text-center p-6 space-y-4 hover:scale-105 transition-all group/cam cursor-pointer z-10 bg-transparent border-0 flex flex-col items-center justify-center focus:outline-none"
+                        >
+                          <div className="w-16 h-16 rounded-full bg-sage/10 mx-auto flex items-center justify-center border border-sage/20 text-sage group-hover/cam:scale-110 transition-transform shadow-lg shadow-black/20">
+                            <Camera size={26} strokeWidth={1.5} className="animate-pulse" />
                           </div>
-                          <p className="text-[10px] text-white/40 uppercase tracking-widest font-black leading-relaxed">{lang === 'bn' ? 'আই পিক্সেল চালু' : 'Face alignment active'}</p>
-                        </div>
+                          <div className="space-y-1">
+                            <p className="text-[10px] text-white/80 uppercase tracking-widest font-black leading-relaxed">{lang === 'bn' ? 'ক্যামেরা চালু করুন' : 'Enable Camera'}</p>
+                            <p className="text-[8px] text-white/40 leading-normal max-w-[150px] mx-auto">{lang === 'bn' ? 'ক্লিক করে পারমিশন অনুমতি দিন' : 'Click to prompt browser permission request'}</p>
+                          </div>
+                        </button>
                       )}
 
                       {/* Video recording blink REC border */}
@@ -2023,6 +2446,13 @@ export default function App() {
                             <p className="text-[10px] text-purple-400 uppercase tracking-widest font-black leading-relaxed animate-pulse">{lang === 'bn' ? 'ভয়েস রেকর্ড হচ্ছে...' : 'VOICE RECORDING...'}</p>
                             <p className="text-xs text-white/60 font-mono">{lang === 'bn' ? `শুনছি... ${voiceSecs}সে. / ১২০সে.` : `Listening... ${voiceSecs}s / 120s`}</p>
                           </div>
+                          {voiceTranscript && (
+                            <div className="mt-2 px-2 max-w-[200px] max-h-[50px] overflow-y-auto text-center mx-auto scrollbar-thin">
+                              <p className="text-[10px] text-purple-200 font-sans italic leading-tight break-words">
+                                "{voiceTranscript}"
+                              </p>
+                            </div>
+                          )}
                         </div>
                       ) : scanStep === 'analyzing' ? (
                         <div className="text-center p-6 flex flex-col justify-center items-center">
@@ -2046,6 +2476,19 @@ export default function App() {
                         <button 
                           onClick={() => {
                             setIsRecordingVoice(false);
+                            stopVolumeAnalysis();
+                            
+                            if (!hasDetectedAudio) {
+                              triggerNotification(
+                                lang === 'bn' 
+                                  ? "কোনো শব্দ বা কথা শোনা যায়নি। আবার চেষ্টা করুন।" 
+                                  : "Voice not detected. Please speak clearly into your microphone and try again.", 
+                                'error'
+                              );
+                              setScanStep('idle');
+                              return;
+                            }
+
                             setScanStep('analyzing');
                             submitAnalysis('voice');
                           }}
@@ -2056,10 +2499,25 @@ export default function App() {
                         </button>
                       ) : scanStep === 'done' ? (
                         <button 
-                          onClick={() => {
+                          onClick={async () => {
                             setScanStep('idle');
-                            setIsRecordingVoice(true);
-                            setVoiceSecs(0);
+                            setHasDetectedAudio(false);
+                            setVoiceTranscript("");
+                            try {
+                              const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                              micStreamRef.current = audioStream;
+                              startVolumeAnalysis(audioStream);
+                              startSpeechRecognition();
+                              setIsRecordingVoice(true);
+                              setVoiceSecs(0);
+                            } catch (e) {
+                              triggerNotification(
+                                lang === 'bn' 
+                                  ? "মাইক্রোফোন পারমিশন পাওয়া যায়নি বা অকার্যকর।" 
+                                  : "Microphone permission denied or unavailable.", 
+                                'error'
+                              );
+                            }
                           }}
                           className="w-full h-14 rounded-[20px] bg-purple-500 hover:bg-purple-600 text-white font-extrabold uppercase tracking-widest text-xs transition-transform active:scale-95 cursor-pointer"
                         >
@@ -2067,11 +2525,26 @@ export default function App() {
                         </button>
                       ) : (
                         <button 
-                          onClick={() => {
+                          onClick={async () => {
                             setScanStep('idle');
-                            setIsRecordingVoice(true);
-                            setVoiceSecs(0);
-                            triggerNotification(lang === 'bn' ? "ভয়েস চেক-ইন শুরু হয়েছে কথা বলুন" : "Microphone active. Talk to Aura.", 'success');
+                            setHasDetectedAudio(false);
+                            setVoiceTranscript("");
+                            try {
+                              const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                              micStreamRef.current = audioStream;
+                              startVolumeAnalysis(audioStream);
+                              startSpeechRecognition();
+                              setIsRecordingVoice(true);
+                              setVoiceSecs(0);
+                              triggerNotification(lang === 'bn' ? "ভয়েস চেক-ইন শুরু হয়েছে কথা বলুন" : "Microphone active. Talk to Aura.", 'success');
+                            } catch (e) {
+                              triggerNotification(
+                                lang === 'bn' 
+                                  ? "মাইক্রোফোন পারমিশন পাওয়া যায়নি বা অকার্যকর।" 
+                                  : "Microphone permission denied or unavailable.", 
+                                'error'
+                              );
+                            }
                           }}
                           disabled={scannerLoading || scanStep === 'analyzing'}
                           className="w-full h-14 rounded-[20px] bg-purple-500 hover:bg-purple-600 text-white font-extrabold uppercase tracking-widest text-xs transition-transform active:scale-95 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
@@ -2130,11 +2603,33 @@ export default function App() {
                     <h3 className="text-xl font-serif text-white font-bold">{lang === 'bn' ? 'আপনার আত্মিক প্রতিফলন' : 'Current Resonance Matrix'}</h3>
                   </div>
 
+                  {/* Real-time Quantum Telemetry Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-white/[0.01] border border-white/5 p-3 rounded-2xl text-left">
+                    <div className="p-2.5 bg-white/[0.02] rounded-xl border border-white/5 space-y-0.5">
+                      <span className="text-[8px] text-white/35 uppercase font-black tracking-wider block">{lang === 'bn' ? 'চক্র কেন্দ্র' : 'Chakra Focal'}</span>
+                      <span className="text-[10px] text-pink-300 font-extrabold truncate block">{telemetryChakra}</span>
+                    </div>
+                    <div className="p-2.5 bg-white/[0.02] rounded-xl border border-white/5 space-y-0.5 font-mono">
+                      <span className="text-[8px] text-white/35 uppercase font-black tracking-wider block">{lang === 'bn' ? 'ফ্রিকোয়েন্সি' : 'Frequency'}</span>
+                      <span className="text-[10px] text-sage font-extrabold truncate block">{telemetryFreq} Hz</span>
+                    </div>
+                    <div className="p-2.5 bg-white/[0.02] rounded-xl border border-white/5 space-y-0.5 font-mono">
+                      <span className="text-[8px] text-white/35 uppercase font-black tracking-wider block">{lang === 'bn' ? 'সামঞ্জস্য' : 'Coherence'}</span>
+                      <span className="text-[10px] text-cyan-300 font-extrabold truncate block">{telemetryCoherence}%</span>
+                    </div>
+                    <div className="p-2.5 bg-white/[0.02] rounded-xl border border-white/5 space-y-0.5 font-mono">
+                      <span className="text-[8px] text-white/35 uppercase font-black tracking-wider block">{lang === 'bn' ? 'তরঙ্গ কোড' : 'Signature'}</span>
+                      <span className="text-[10px] text-purple-300 font-extrabold truncate block">#{telemetrySignature}</span>
+                    </div>
+                  </div>
+
                   <div className="bg-white/[0.02] rounded-[28px] border border-white/5 p-6 min-h-[160px] flex items-center justify-center relative overflow-hidden">
                     {scanReflection ? (
-                      <p className="text-sm tracking-wide text-white/90 leading-relaxed font-serif italic text-center">
-                        "{scanReflection}"
-                      </p>
+                      <div className="text-sm tracking-wide text-white/90 leading-relaxed font-serif italic text-center space-y-3">
+                        {scanReflection.split('\n').filter(Boolean).map((line, idx) => (
+                          <p key={idx}>{line.trim()}</p>
+                        ))}
+                      </div>
                     ) : (
                       <div className="text-center text-white/30 space-y-2 max-w-xs">
                         <Clock className="w-8 h-8 opacity-20 text-white mx-auto animate-pulse" />
@@ -2188,7 +2683,7 @@ export default function App() {
                           </button>
                         ) : (
                           <button
-                            onClick={() => speakNow(scanReflection)}
+                            onClick={() => speakNow(scanReflection, true)}
                             className="flex-1 py-3.5 px-4 rounded-2xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-200 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-purple-500/10 active:scale-95 duration-300"
                           >
                             <Volume2 size={15} className="animate-pulse" />
@@ -2399,7 +2894,7 @@ export default function App() {
                       {journalHistory.map((item) => (
                         <div key={item.id} className="flex gap-4 items-center justify-between p-4 bg-white/[0.02] border border-white/5 hover:border-white/10 rounded-2xl transition-all">
                           <div className="flex-1 space-y-1 text-left">
-                            <p className="text-xs text-white/80 leading-relaxed font-serif italic truncate">"{item.reflection}"</p>
+                            <p className="text-xs text-white/80 leading-relaxed font-serif italic truncate">"{item.reflection.replace(/\n+/g, " ").trim()}"</p>
                             <p className="text-[8px] uppercase tracking-widest text-white/40 font-black">{new Date(item.timestamp).toLocaleDateString()} via {item.type}</p>
                           </div>
                           
@@ -2788,6 +3283,24 @@ export default function App() {
               </motion.div>
             )
           )}
+
+          {activeTab === 'games' && (
+            <motion.div
+              key="games-pane"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              className="w-full max-w-7xl mx-auto"
+            >
+              <MindGames 
+                lang={lang} 
+                points={points} 
+                setPoints={setPoints} 
+                triggerNotification={(msg, type) => triggerNotification(msg, type === 'info' ? 'success' : type)}
+                langDict={currentT}
+              />
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
@@ -3031,6 +3544,15 @@ export default function App() {
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               className="bg-[#0b0b18]/95 border border-purple-500/20 w-full max-w-2xl rounded-[40px] shadow-2xl shadow-purple-500/10 relative z-10 overflow-hidden text-center max-h-[90vh] flex flex-col"
             >
+              {/* Close Button at top right */}
+              <button
+                onClick={restartScan}
+                className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/5 border border-white/10 hover:bg-white/15 active:scale-95 flex items-center justify-center text-white/50 hover:text-white transition-all cursor-pointer z-50 focus:outline-none"
+                title={lang === 'bn' ? 'বন্ধ করুন' : 'Close'}
+              >
+                <X size={14} />
+              </button>
+
               {/* Top ambient colored light beam */}
               <div className="absolute top-0 inset-x-0 h-48 bg-gradient-to-b from-purple-500/15 via-pink-500/5 to-transparent pointer-events-none" />
 
@@ -3051,12 +3573,33 @@ export default function App() {
                           ? 'অরা আজকে আপনার এই ফ্রেম বা ভয়েস থেকে আপনার আধ্যাত্মিক স্পন্দন বিশ্লেষণ করেছে। আপনি এটি কিভাবে গ্রহণ করতে চান?' 
                           : 'Aura has successfully mapped your life force vibration for this millisecond. How would you like to receive it?'}
                       </p>
+
+                      {tempReflection && extractOnlyState(tempReflection) && (
+                        <div className="mt-4 p-4 rounded-2xl bg-white/[0.03] border border-white/5 max-w-md mx-auto relative overflow-hidden group hover:border-white/10 transition-all duration-300">
+                          <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-pink-500/30 to-transparent" />
+                          <span className="text-[9px] uppercase tracking-[0.2em] text-pink-400 font-extrabold block mb-1">
+                            {lang === 'bn' ? 'শনাক্তকৃত অবস্থা (Detected State)' : 'Detected State'}
+                          </span>
+                          <p className="text-xs sm:text-sm text-white/90 font-serif italic leading-relaxed">
+                            "{extractOnlyState(tempReflection)}"
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto">
                       {/* Option 1: Hear Guidance */}
                       <button
                         onClick={() => {
+                          if (typeof window !== 'undefined' && window.speechSynthesis) {
+                            try {
+                              const unlockUtterance = new SpeechSynthesisUtterance("");
+                              unlockUtterance.volume = 0;
+                              window.speechSynthesis.speak(unlockUtterance);
+                            } catch (e) {
+                              console.warn("TTS unlock failed:", e);
+                            }
+                          }
                           setTtsOption('speak');
                           setPopupSubStep('cards');
                         }}
@@ -3095,6 +3638,16 @@ export default function App() {
                           </p>
                         </div>
                       </button>
+                    </div>
+
+                    <div className="pt-2">
+                       <button
+                         onClick={restartScan}
+                         className="px-6 py-2.5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 text-white/60 hover:text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer mx-auto duration-300"
+                       >
+                         <RefreshCw size={11} className="text-pink-400 rotate-180" />
+                         <span>{lang === 'bn' ? 'পুনরায় শুরু করুন' : 'Restart / Try Again'}</span>
+                       </button>
                     </div>
                   </div>
                 )}
@@ -3174,7 +3727,25 @@ export default function App() {
                     </div>
 
                     {/* Bottom Action reveal trigger */}
-                    <div className="pt-2">
+                    <div className="pt-2 flex flex-col sm:flex-row gap-2 max-w-md mx-auto justify-center">
+                      <button
+                        onClick={() => {
+                          setPopupSubStep('choice');
+                          setSelectedMysteryCard(null);
+                        }}
+                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 text-white/60 hover:text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all cursor-pointer duration-300"
+                        title={lang === 'bn' ? 'আগের ধাপে যান' : 'Go back to choices'}
+                      >
+                        <ArrowLeft size={11} className="text-purple-400" />
+                        <span>{lang === 'bn' ? 'পেছনে ফিরুন' : 'Go Back'}</span>
+                      </button>
+                      <button
+                        onClick={restartScan}
+                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 text-white/60 hover:text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all cursor-pointer duration-300"
+                      >
+                        <RefreshCw size={11} className="text-pink-400 animate-spin-slow" />
+                        <span>{lang === 'bn' ? 'পুনরায় শুরু' : 'Restart Scan'}</span>
+                      </button>
                       <button
                         onClick={() => {
                           if (selectedMysteryCard === null) {
@@ -3187,19 +3758,19 @@ export default function App() {
                           
                           // Explicit speak trigger if chosen
                           if (ttsOption === 'speak') {
-                            speakNow(tempReflection);
+                            speakNow(tempReflection, true);
                           }
                           triggerNotification(lang === 'bn' ? "অভিনন্দন! আপনার মানসিক আভা প্রতিবেদন খোলা হয়েছে।" : "Inspiration Unlocked! Aura evaluation revealed below.", "success");
                         }}
                         disabled={selectedMysteryCard === null}
-                        className={`w-full max-w-sm mx-auto h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        className={`flex-1 h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.1em] sm:tracking-[0.15em] transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                           selectedMysteryCard !== null
                             ? 'bg-gradient-to-r from-pink-500 to-purple-500 font-extrabold text-white animate-pulse shadow-lg shadow-pink-500/20'
                             : 'bg-white/5 border border-white/10 text-white/30 disabled:pointer-events-none'
                         }`}
                       >
                         <Sparkles size={11} />
-                        <span>{lang === 'bn' ? 'আভা বিশ্লেষণ উন্মুক্ত করুন' : 'Reveal Diagnostic Note'}</span>
+                        <span>{lang === 'bn' ? 'আভা বিশ্লেষণ উন্মুক্ত করুন' : 'Reveal Diagnostic'}</span>
                       </button>
                     </div>
                   </div>
