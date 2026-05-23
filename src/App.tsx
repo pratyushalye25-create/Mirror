@@ -307,9 +307,10 @@ interface LoginRequiredViewProps {
   currentT: any;
   onSignIn: () => Promise<any>;
   triggerNotification: (message: string, type: 'success' | 'error') => void;
+  onBypass: () => void;
 }
 
-function LoginRequiredView({ tab, lang, currentT, onSignIn, triggerNotification }: LoginRequiredViewProps) {
+function LoginRequiredView({ tab, lang, currentT, onSignIn, triggerNotification, onBypass }: LoginRequiredViewProps) {
   const tabName = 
     tab === 'mirror' ? (lang === 'bn' ? 'দ্য ডিপ মিরর (The Deep Mirror)' : 'The Deep Mirror') :
     tab === 'coach' ? (lang === 'bn' ? 'অরা কোচ (Aura Coach)' : 'Aura Coach') :
@@ -346,29 +347,39 @@ function LoginRequiredView({ tab, lang, currentT, onSignIn, triggerNotification 
         {descText}
       </p>
 
-      <button
-        onClick={async () => {
-          try {
-            await onSignIn();
-            triggerNotification(lang === 'bn' ? "গুগল অ্যাকাউন্ট সংযুক্ত হয়েছে" : "Google Account Connected", 'success');
-          } catch (e: any) {
-            console.error(e);
-            const code = e?.code || '';
-            const msg = e?.message || '';
-            const isCancelled = code === 'auth/cancelled-popup-request' || 
-                                code === 'auth/popup-closed-by-user' ||
-                                msg.toLowerCase().includes('cancelled-popup-request') ||
-                                msg.toLowerCase().includes('popup-closed-by-user');
-            if (!isCancelled) {
-              triggerNotification(e.message || "Failed to sign in", 'error');
+      <div className="w-full space-y-3">
+        <button
+          onClick={async () => {
+            try {
+              await onSignIn();
+              triggerNotification(lang === 'bn' ? "গুগল অ্যাকাউন্ট সংযুক্ত হয়েছে" : "Google Account Connected", 'success');
+            } catch (e: any) {
+              console.error(e);
+              const code = e?.code || '';
+              const msg = e?.message || '';
+              const isCancelled = code === 'auth/cancelled-popup-request' || 
+                                  code === 'auth/popup-closed-by-user' ||
+                                  msg.toLowerCase().includes('cancelled-popup-request') ||
+                                  msg.toLowerCase().includes('popup-closed-by-user');
+              if (!isCancelled) {
+                triggerNotification(e.message || "Failed to sign in", 'error');
+              }
             }
-          }
-        }}
-        className="w-full h-14 bg-white hover:bg-white/90 text-black font-extrabold uppercase tracking-widest text-xs rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-white/5 active:scale-95 transition-all cursor-pointer"
-      >
-        <User size={14} strokeWidth={2.5} />
-        <span>{buttonText}</span>
-      </button>
+          }}
+          className="w-full h-14 bg-white hover:bg-white/90 text-black font-extrabold uppercase tracking-widest text-xs rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-white/5 active:scale-95 transition-all cursor-pointer"
+        >
+          <User size={14} strokeWidth={2.5} />
+          <span>{buttonText}</span>
+        </button>
+
+        <button
+          onClick={onBypass}
+          className="w-full h-13 bg-white/5 hover:bg-white/10 text-white/80 font-black uppercase tracking-widest text-[9px] rounded-2xl flex items-center justify-center gap-2 border border-white/10 active:scale-95 transition-all cursor-pointer"
+        >
+          <Sparkles size={11} className="text-pink-400" />
+          <span>{lang === 'bn' ? "গেস্ট হিসেবে চালিয়ে যান (অফলাইন মোড)" : "Continue as Guest (Offline Mode)"}</span>
+        </button>
+      </div>
 
       <div className="text-[10px] text-white/35">
         🔒 {lang === 'bn' ? 'আপনার ব্যক্তিগত ডায়েরি ও রিফ্লেকশন লগ চিরকাল সুরক্ষিত থাকবে।' : 'Your digital reflections and notes are strictly confidential & secure.'}
@@ -772,9 +783,15 @@ export default function App() {
     if (savedG2) setGame2Plays(parseInt(savedG2));
     if (savedG3) setGame3Plays(parseInt(savedG3));
 
+    const savedGuest = localStorage.getItem('mm_guest_session');
+    if (savedGuest) {
+      setUser(JSON.parse(savedGuest));
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (gUser) => {
       if (gUser) {
         setUser(gUser);
+        localStorage.removeItem('mm_guest_session'); // Clear guest if we logged in
         // Load data from Firebase
         const userDocRef = doc(db, 'users', gUser.uid);
         try {
@@ -846,7 +863,12 @@ export default function App() {
           console.error("Firestore Loading error, using local fallback", e);
         }
       } else {
-        setUser(null);
+        const checkGuest = localStorage.getItem('mm_guest_session');
+        if (checkGuest) {
+          setUser(JSON.parse(checkGuest));
+        } else {
+          setUser(null);
+        }
       }
       setLoadingUser(false);
     });
@@ -1584,6 +1606,23 @@ export default function App() {
     }
   };
 
+  const handleBypassAuth = () => {
+    const guestUser = {
+      uid: 'guest_user',
+      displayName: lang === 'bn' ? 'গেস্ট এক্সপ্লোরার' : 'Guest Explorer',
+      email: 'guest@mindmirror.local',
+      photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&auto=format&fit=crop&q=60'
+    };
+    setUser(guestUser);
+    localStorage.setItem('mm_guest_session', JSON.stringify(guestUser));
+    triggerNotification(
+      lang === 'bn' 
+        ? "গেস্ট মোড সক্রিয় হয়েছে! আপনার প্রগ্রেস ও লগ অফলাইনে সেভ থাকবে।" 
+        : "Guest Mode activated! Your reflections and progress are saved locally.", 
+      'success'
+    );
+  };
+
   // Handle diary save
   const handleImprintJournal = async () => {
     if (!journalInput.trim()) return;
@@ -1698,7 +1737,6 @@ export default function App() {
               { id: 'dashboard', label: currentT.tabDashboard, icon: <LayoutDashboard size={18} /> },
               { id: 'mirror', label: currentT.tabMirror, icon: <Camera size={18} /> },
               { id: 'coach', label: currentT.tabCoach, icon: <Compass size={18} /> },
-              { id: 'journal', label: currentT.tabJournal, icon: <Activity size={18} /> },
               { id: 'playground', label: currentT.tabPlayground, icon: <Brain size={18} /> },
               { id: 'games', label: lang === 'bn' ? 'মেমোরি গেম' : 'Memory Game', icon: <Gamepad2 size={18} /> }
             ].map((tab) => (
@@ -1768,6 +1806,8 @@ export default function App() {
                 <button 
                   onClick={async () => {
                     await logOut();
+                    localStorage.removeItem('mm_guest_session');
+                    setUser(null);
                     triggerNotification(lang === 'bn' ? "লগআউট করা হয়েছে। অন্য একাউন্ট সংযোগ করুন।" : "Logged out successfully. You can connect another user.", 'success');
                   }}
                   className="p-1.5 text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 rounded-lg cursor-pointer transition-all border border-red-500/20 shrink-0"
@@ -1812,7 +1852,6 @@ export default function App() {
             { id: 'dashboard', label: currentT.tabDashboard, icon: <LayoutDashboard size={18} /> },
             { id: 'mirror', label: currentT.tabMirror, icon: <Camera size={18} /> },
             { id: 'coach', label: currentT.tabCoach, icon: <Compass size={18} /> },
-            { id: 'journal', label: currentT.tabJournal, icon: <Activity size={18} /> },
             { id: 'playground', label: currentT.tabPlayground, icon: <Brain size={18} /> },
             { id: 'games', label: lang === 'bn' ? 'মেমোরি গেম' : 'Memory Game', icon: <Gamepad2 size={18} /> }
           ].map((tab) => (
@@ -1843,6 +1882,8 @@ export default function App() {
                 onClick={async () => {
                   setMenuOpen(false);
                   await logOut();
+                  localStorage.removeItem('mm_guest_session');
+                  setUser(null);
                   triggerNotification(lang === 'bn' ? "লগআউট সফল" : "Logged out", 'success');
                 }}
                 className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-black px-3 py-2 rounded-xl border border-red-500/20 flex items-center gap-1 cursor-pointer transition-all"
@@ -2183,7 +2224,7 @@ export default function App() {
 
           {activeTab === 'mirror' && (
             !user ? (
-              <LoginRequiredView tab="mirror" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} triggerNotification={triggerNotification} />
+              <LoginRequiredView tab="mirror" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} triggerNotification={triggerNotification} onBypass={handleBypassAuth} />
             ) : (
               <motion.div 
                 key="mirror-pane"
@@ -2767,7 +2808,7 @@ export default function App() {
 
           {activeTab === 'coach' && (
             !user ? (
-              <LoginRequiredView tab="coach" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} triggerNotification={triggerNotification} />
+              <LoginRequiredView tab="coach" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} triggerNotification={triggerNotification} onBypass={handleBypassAuth} />
             ) : (
               <motion.div 
                 key="coach-pane"
@@ -2869,7 +2910,7 @@ export default function App() {
 
           {activeTab === 'journal' && (
             !user ? (
-              <LoginRequiredView tab="journal" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} triggerNotification={triggerNotification} />
+              <LoginRequiredView tab="journal" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} triggerNotification={triggerNotification} onBypass={handleBypassAuth} />
             ) : (
               <motion.div 
                 key="journal-pane"
@@ -2971,7 +3012,7 @@ export default function App() {
 
           {activeTab === 'playground' && (
             !user ? (
-              <LoginRequiredView tab="playground" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} triggerNotification={triggerNotification} />
+              <LoginRequiredView tab="playground" lang={lang} currentT={currentT} onSignIn={signInWithGoogle} triggerNotification={triggerNotification} onBypass={handleBypassAuth} />
             ) : (
               <motion.div 
                 key="playground-pane"
