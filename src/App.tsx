@@ -791,9 +791,9 @@ export default function App() {
             // Save initial profile
             await setDoc(userDocRef, {
               uid: gUser.uid,
-              displayName: gUser.displayName,
-              email: gUser.email,
-              photoURL: gUser.photoURL,
+              displayName: gUser.displayName || "",
+              email: gUser.email || "",
+              photoURL: gUser.photoURL || "",
               points: 350,
               streak: 5,
               badges: ["Clarity Initiate"],
@@ -809,9 +809,37 @@ export default function App() {
           const checkinsSnap = await getDocs(checkinsRef);
           const rawHist: any[] = [];
           checkinsSnap.forEach((d) => {
-            rawHist.push({ id: d.id, ...d.data() });
+            const data = d.data();
+            let ts = data.timestamp;
+            if (ts) {
+              if (typeof ts.toDate === 'function') {
+                ts = ts.toDate().toISOString();
+              } else if (ts.seconds) {
+                ts = new Date(ts.seconds * 1000).toISOString();
+              } else if (typeof ts === 'string') {
+                // Keep it
+              } else {
+                try {
+                  ts = new Date(ts).toISOString();
+                } catch (e) {
+                  ts = new Date().toISOString();
+                }
+              }
+            } else {
+              ts = new Date().toISOString();
+            }
+            rawHist.push({ 
+              id: d.id, 
+              ...data,
+              timestamp: ts
+            });
           });
           if (rawHist.length > 0) {
+            rawHist.sort((a, b) => {
+              const tA = a.timestamp || "";
+              const tB = b.timestamp || "";
+              return tB.localeCompare(tA);
+            });
             setJournalHistory(rawHist);
           }
         } catch (e) {
@@ -1441,9 +1469,33 @@ export default function App() {
         setScanReflection(""); 
         setScanStep('done');
 
-        // Record history
+        let finalId = Math.random().toString(36).substring(7);
+
+        // Save entry in Firestore if user authed
+        if (user) {
+          try {
+            const checkinsColl = collection(db, 'users', user.uid, 'checkins');
+            const docRef = await addDoc(checkinsColl, {
+              timestamp: new Date().toISOString(),
+              reflection: data.reflection,
+              type,
+              score: type === 'face' ? 85 : type === 'voice' ? 80 : 75
+            });
+            finalId = docRef.id;
+
+            // Increase stats firebase
+            const userDocRef = doc(db, 'users', user.uid);
+            await updateDoc(userDocRef, {
+              points: points + 100,
+              streak: streak + 1
+            });
+          } catch (dbErr) {
+            console.error("Firestore Save Error:", dbErr);
+          }
+        }
+
         const newEntry = {
-          id: Math.random().toString(36).substring(7),
+          id: finalId,
           timestamp: new Date().toISOString(),
           reflection: data.reflection,
           type,
@@ -1451,24 +1503,6 @@ export default function App() {
         };
 
         setJournalHistory(prev => [newEntry, ...prev]);
-
-        // Save entry in Firestore if user authed
-        if (user) {
-          const checkinsColl = collection(db, 'users', user.uid, 'checkins');
-          await addDoc(checkinsColl, {
-            timestamp: new Date().toISOString(),
-            reflection: data.reflection,
-            type,
-            score: newEntry.score
-          });
-
-          // Increase stats firebase
-          const userDocRef = doc(db, 'users', user.uid);
-          await updateDoc(userDocRef, {
-            points: points + 100,
-            streak: streak + 1
-          });
-        }
 
         setPoints(p => p + 100);
         setStreak(s => s + 1);
